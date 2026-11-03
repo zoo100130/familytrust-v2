@@ -15,7 +15,7 @@ import {Payments} from "./modules/Payments.sol";
 ///         - BidBook         ：做市商收購報價
 ///         - Payments        ：信託直付與收款方
 ///         - TrustStorage    ：全部狀態變數（升級時只能往後加）
-/// @param c initialize 一次貼上，例如：
+///         initialize 的 c 一次貼上，例如：
 ///          ["代幣Proxy","出資人","受益人",300,500,24,2500,12,3,6,3,1800]
 contract FamilyTrustV2 is Initializable, UUPSUpgradeable, SettlorControls, BidBook, Payments {
     /// @custom:oz-upgrades-unsafe-allow constructor
