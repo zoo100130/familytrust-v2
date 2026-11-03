@@ -380,6 +380,8 @@ async function load(){
  try{
   const ver=await c.version().catch(()=>null);
   if(!ver||!String(ver).startsWith("2")){loading=false;toast("目前載入的 "+short(trustAddr)+" 不是 FamilyTrustV2：請到「設定」貼上新部署的 ERC1967Proxy 地址。舊版合約請到 zoo100130.github.io/dapp_family-trust_test","bad");S=null;page="settings";render();return;}
+  const tk0=await c.token().catch(()=>ethers.ZeroAddress);
+  if(tk0===ethers.ZeroAddress){loading=false;toast("這是 FamilyTrustV2 的「實作合約」地址，沒有初始化。請改用 Remix Deployed Contracts 裡 ERC1967Proxy 的地址（部署時要勾 Deploy with Proxy）","bad");S=null;page="settings";render();return;}
   const [token,settlor,beneficiary,admin,frozen,start,interval,amount,total,unpaid,cov,pool,escrow,pausedUntil,usedV,maxPause,budgetV,maxApr,ppy,payWin,per,lsRaw,bidsRaw,pys,blk]=await Promise.all([
    c.token(),c.settlor(),c.beneficiary(),c.upgradeAdmin(),c.upgradesFrozen(),c.startTime(),c.interval(),c.amountPerPeriod(),c.totalPeriods(),c.unpaidLiabilities(),c.coverageBps(),
    c.poolBalance(),c.bidEscrow(),c.pausedUntil(),c.pauseUsedPeriods(),c.maxPausePeriods(),c.pauseBudgetPeriods(),c.maxAprBps(),c.periodsPerYear(),c.payWindow(),
@@ -400,7 +402,7 @@ async function load(){
    maxApr:Number(maxApr),ppy:Number(ppy),claimed,owners,listings:ls,myBal,events:keep?S.events:[],evLoaded:keep?S.evLoaded:false,
    version:String(ver),upgradeAdmin:admin,upgradesFrozen:frozen,bidEscrow:escrow,bids,payees,payWindow:Number(payWin)};
   loading=false;render();loadEvents(prov);loadExtras(prov);
- }catch(e){console.error(e);loading=false;toast("讀不到信託合約：請確認地址正確、網路是 Sepolia","bad");S=null;render();}
+ }catch(e){console.error(e);loading=false;toast("讀不到信託合約：請確認地址正確、網路是 Sepolia。（"+String(e&&(e.shortMessage||e.message)||e).slice(0,120)+"）","bad");S=null;render();}
 }
 async function safeInfo(a,prov){try{const code=await prov.getCode(a);if(!code||code==="0x")return null;const s=new ethers.Contract(a,SAFE_ABI,prov);
  const [t,o]=await Promise.all([s.getThreshold(),s.getOwners()]);return{threshold:Number(t),owners:[...o]};}catch(e){return null;}}
