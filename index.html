@@ -379,7 +379,7 @@ async function load(){
  const prov=(wprov&&signer)?wprov:rprov, c=new ethers.Contract(trustAddr,TRUST_ABI,prov);
  try{
   const ver=await c.version().catch(()=>null);
-  if(!ver||!String(ver).startsWith("2")){loading=false;toast("這不是 FamilyTrustV2 合約。舊版合約請到 zoo100130.github.io/dapp_family-trust_test 查看","bad");S=null;render();return;}
+  if(!ver||!String(ver).startsWith("2")){loading=false;toast("目前載入的 "+short(trustAddr)+" 不是 FamilyTrustV2：請到「設定」貼上新部署的 ERC1967Proxy 地址。舊版合約請到 zoo100130.github.io/dapp_family-trust_test","bad");S=null;page="settings";render();return;}
   const [token,settlor,beneficiary,admin,frozen,start,interval,amount,total,unpaid,cov,pool,escrow,pausedUntil,usedV,maxPause,budgetV,maxApr,ppy,payWin,per,lsRaw,bidsRaw,pys,blk]=await Promise.all([
    c.token(),c.settlor(),c.beneficiary(),c.upgradeAdmin(),c.upgradesFrozen(),c.startTime(),c.interval(),c.amountPerPeriod(),c.totalPeriods(),c.unpaidLiabilities(),c.coverageBps(),
    c.poolBalance(),c.bidEscrow(),c.pausedUntil(),c.pauseUsedPeriods(),c.maxPausePeriods(),c.pauseBudgetPeriods(),c.maxAprBps(),c.periodsPerYear(),c.payWindow(),
@@ -940,7 +940,7 @@ function bindView(D){
  const cs=$("#cfgSave");if(cs){cs.onclick=()=>{if(setTrust($("#cfgAddr").value)){S=null;page="overview";load();}};$("#cfgAddr").onkeydown=e=>{if(e.key==="Enter")cs.click();};}
  const cd=$("#cfgDemo");if(cd)cd.onclick=startDemo;
  const ccs=$("#cfgConsentSave");if(ccs)ccs.onclick=()=>{const a=($("#cfgConsent").value||"").trim();if(a&&!/^0x[0-9a-fA-F]{40}$/.test(a)){toast("地址格式不對","bad");return;}
-  consentAddr=a?ethers.getAddress(a):"";lsSet("ft_consent",consentAddr);const u=new URL(location.href);if(consentAddr)u.searchParams.set("consent",consentAddr);else u.searchParams.delete("consent");history.replaceState(null,"",u);toast(consentAddr?"已儲存 RecordConsent 地址":"已清除","ok");load();};
+  consentAddr=a?ethers.getAddress(a):"";lsSet("ft2_consent",consentAddr);const u=new URL(location.href);if(consentAddr)u.searchParams.set("consent",consentAddr);else u.searchParams.delete("consent");history.replaceState(null,"",u);toast(consentAddr?"已儲存 RecordConsent 地址":"已清除","ok");load();};
  if(!D)return;
  document.querySelectorAll("[data-act]").forEach(b=>b.onclick=()=>act(b.dataset.act,b.dataset.id));
  document.querySelectorAll("[data-pick]").forEach(b=>b.onclick=()=>{sbPick=+b.dataset.pick;const s=$("#sbBid");if(s){s.value=b.dataset.pick;s.scrollIntoView({behavior:"smooth",block:"center"});sbQuote(D);}});
@@ -1037,7 +1037,7 @@ setInterval(()=>{if(!demo&&trustAddr&&!Object.values(busy).some(Boolean)&&docume
 
 /* ---------- init ---------- */
 function setTrust(a){a=(a||"").trim();if(!/^0x[0-9a-fA-F]{40}$/.test(a)){toast("地址格式不對：0x 開頭加 40 個英數字","bad");return false;}
- trustAddr=ethers.getAddress(a);demo=false;lsSet("ft_trust",trustAddr);const u=new URL(location.href);u.searchParams.set("trust",trustAddr);u.searchParams.delete("demo");u.hash="overview";history.replaceState(null,"",u);return true;}
+ trustAddr=ethers.getAddress(a);demo=false;lsSet("ft2_trust",trustAddr);const u=new URL(location.href);u.searchParams.set("trust",trustAddr);u.searchParams.delete("demo");u.hash="overview";history.replaceState(null,"",u);return true;}
 function startDemo(){demo=true;const u=new URL(location.href);u.searchParams.set("demo","1");u.searchParams.delete("trust");history.replaceState(null,"",u);if(page==="settings")page="overview";load();}
 $("#connectBtn").onclick=connect;$("#refreshBtn").onclick=()=>load();
 $("#trustSel").onclick=()=>nav("settings");$("#menuBtn").onclick=e=>{e.stopPropagation();$("#app").classList.toggle("open");};
@@ -1045,9 +1045,9 @@ document.addEventListener("click",e=>{if($("#app").classList.contains("open")&&!
 rprov=new ethers.JsonRpcProvider(RPC,11155111,{staticNetwork:true});
 const q=new URLSearchParams(location.search),h=location.hash.slice(1);
 if(PAGES.some(p=>p.id===h))page=h;
-{const ca=q.get("consent")||lsGet("ft_consent");if(ca&&/^0x[0-9a-fA-F]{40}$/.test(ca))consentAddr=ethers.getAddress(ca);}
+{const ca=q.get("consent")||lsGet("ft2_consent");if(ca&&/^0x[0-9a-fA-F]{40}$/.test(ca))consentAddr=ethers.getAddress(ca);}
 if(q.get("demo"))demo=true;
-else{const a=q.get("trust")||lsGet("ft_trust");if(a&&/^0x[0-9a-fA-F]{40}$/.test(a))trustAddr=ethers.getAddress(a);}
+else{const a=q.get("trust")||lsGet("ft2_trust");if(a&&/^0x[0-9a-fA-F]{40}$/.test(a))trustAddr=ethers.getAddress(a);}
 load();
 })();
 </script>
