@@ -1,0 +1,1055 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FamilyTrust V2 · 信託控制台</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Noto+Sans+TC:wght@400;500;700&family=JetBrains+Mono:wght@400;500;600&display=swap">
+<script src="https://cdn.jsdelivr.net/npm/ethers@6.13.4/dist/ethers.umd.min.js"></script>
+<style>
+:root{
+  --bg:#0f101a;--side:#0c0d16;--surface:#161826;--surface-2:#1d2033;--border:#272a3f;--text:#e6e8f2;--muted:#8b90a8;--faint:#5d6280;
+  --primary:#98a4f7;--primary-weak:#98a4f71f;--on-primary:#0f101a;
+  --success:#4fd18b;--warning:#f2b84b;--danger:#f27171;
+  --s1:#3987e5;--s2:#d95926;--grid:#23263a;
+  --sans:"Inter","Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+  color-scheme:dark;
+}
+@media (prefers-color-scheme:light){:root{
+  --bg:#f6f7fb;--side:#eef0f6;--surface:#fff;--surface-2:#f0f2f8;--border:#dcdfeb;--text:#141626;--muted:#5a5f78;--faint:#9a9fb5;
+  --primary:#5664d9;--primary-weak:#5664d914;--on-primary:#fff;
+  --success:#1f9d5c;--warning:#a86b00;--danger:#c93b3b;
+  --s1:#2a78d6;--s2:#eb6834;--grid:#e9ebf2;color-scheme:light}}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{background:var(--bg);color:var(--text);font:14px/1.6 var(--sans);-webkit-font-smoothing:antialiased}
+.num,.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+a{color:var(--primary);text-decoration:none}a:hover{text-decoration:underline}
+[hidden]{display:none!important}
+
+/* ---------- shell ---------- */
+.app{display:grid;grid-template-columns:240px 1fr;min-height:100vh}
+.side{background:var(--side);border-right:1px solid var(--border);display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow-y:auto}
+.brand{display:flex;align-items:center;gap:10px;padding:18px 18px 14px;font-weight:600;font-size:15px}
+.logo{width:28px;height:28px;border-radius:8px;background:var(--primary);display:grid;place-items:center;color:var(--on-primary);font:600 12px var(--mono)}
+.brand small{display:block;font:500 11px var(--sans);color:var(--muted)}
+.trustsel{margin:0 12px 10px;padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:var(--surface);cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:8px;color:var(--text);font:inherit;text-align:left;width:calc(100% - 24px)}
+.trustsel:hover{border-color:var(--faint)}
+.trustsel b{display:block;font:500 12px var(--mono)}
+.trustsel span{font-size:11px;color:var(--muted)}
+.nav{padding:6px 10px;display:flex;flex-direction:column;gap:2px}
+.nav-g{font-size:12px;font-weight:500;color:var(--faint);padding:14px 10px 6px}
+.nav a{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:8px;color:var(--muted);font-weight:500;font-size:13.5px;text-decoration:none}
+.nav a:hover{background:var(--surface);color:var(--text)}
+.nav a[aria-current=page]{background:var(--primary-weak);color:var(--text)}
+.nav a[aria-current=page] svg{color:var(--primary)}
+.nav svg{width:16px;height:16px;flex:none}
+.nav .tag{margin-left:auto;font-size:10px;padding:0 6px;border-radius:999px;background:var(--primary);color:var(--on-primary);font-weight:600;line-height:16px}
+.nav .cnt{margin-left:auto;font:500 11px var(--mono);color:var(--faint)}
+.side-foot{margin-top:auto;padding:12px;border-top:1px solid var(--border)}
+.wallet{display:flex;align-items:center;gap:10px;padding:8px;border-radius:10px}
+.avatar{width:30px;height:30px;border-radius:50%;flex:none;background:conic-gradient(from 90deg,var(--s1),var(--primary),var(--s2),var(--s1))}
+.wallet b{display:block;font:500 12px var(--mono)}
+.wallet span{font-size:11px;color:var(--muted)}
+.mainc{min-width:0;display:flex;flex-direction:column}
+.topbar{height:56px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;padding:0 24px;position:sticky;top:0;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(8px);z-index:10}
+.crumb{font-size:13px;color:var(--muted);margin-right:auto;display:flex;gap:8px;align-items:center;min-width:0;white-space:nowrap;overflow:hidden}
+.crumb b{color:var(--text);font-weight:500}
+.page{padding:24px;max-width:1280px;width:100%}
+.menu-btn{display:none!important}
+@media (max-width:960px){
+  .app{grid-template-columns:1fr}
+  .side{position:fixed;inset:0 auto 0 0;width:260px;z-index:40;transform:translateX(-100%);transition:transform .2s}
+  .app.open .side{transform:none;box-shadow:0 0 0 100vmax rgba(0,0,0,.5)}
+  .menu-btn{display:inline-flex!important}
+  .topbar{padding:0 12px;gap:8px}.page{padding:16px}
+}
+@media (max-width:520px){#statusPill,#refreshBtn{display:none}.crumb span{display:none}}
+
+/* ---------- atoms ---------- */
+.pill{display:inline-flex;align-items:center;gap:6px;font-size:12px;padding:2px 10px;border-radius:999px;border:1px solid var(--border);color:var(--muted);white-space:nowrap;line-height:20px}
+.pill i{width:6px;height:6px;border-radius:50%;background:currentColor;display:inline-block}
+.p-ok{color:var(--success);background:color-mix(in srgb,var(--success) 12%,transparent);border-color:transparent}
+.p-warn{color:var(--warning);background:color-mix(in srgb,var(--warning) 12%,transparent);border-color:transparent}
+.p-bad{color:var(--danger);background:color-mix(in srgb,var(--danger) 12%,transparent);border-color:transparent}
+.p-pri{color:var(--primary);background:var(--primary-weak);border-color:transparent}
+.p-s2{color:var(--s2);background:color-mix(in srgb,var(--s2) 14%,transparent);border-color:transparent}
+.btn{height:34px;padding:0 14px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text);font:600 13px var(--sans);cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;justify-content:center}
+.btn:hover{background:var(--surface-2)}
+.btn.pri{background:var(--primary);border-color:var(--primary);color:var(--on-primary)}
+.btn.pri:hover{filter:brightness(1.08)}
+.btn.dng{color:var(--danger);border-color:color-mix(in srgb,var(--danger) 45%,transparent);background:transparent}
+.btn.ghost{background:transparent;border-color:transparent;color:var(--muted);padding:0 8px}
+.btn.lg{height:44px;padding:0 22px;font-size:15px}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn svg{width:16px;height:16px}
+.btn:focus-visible,.nav a:focus-visible,input:focus-visible,.seg button:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+.eyebrow{font-size:12px;font-weight:500;color:var(--muted)}
+h1{font-size:22px;font-weight:600;margin:0;letter-spacing:-.01em}
+h2{font-size:14px;font-weight:600;margin:0}
+.sub{color:var(--muted);font-size:13px;margin:4px 0 0;max-width:70ch}
+.ph{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-bottom:20px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px;min-width:0}
+.card-h{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+.card-h .note{margin:0}
+.stack{display:flex;flex-direction:column;gap:16px;min-width:0}
+.g{display:grid;gap:16px;margin-bottom:16px}
+.g>*{min-width:0}
+.g-21{grid-template-columns:2fr 1fr}.g-12{grid-template-columns:1fr 2fr}.g-11{grid-template-columns:1fr 1fr}.g-111{grid-template-columns:repeat(3,1fr)}
+@media (max-width:1100px){.g-111{grid-template-columns:1fr 1fr}}
+@media (max-width:900px){.g-21,.g-12,.g-11,.g-111{grid-template-columns:1fr}}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:16px}
+.kpi{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px;position:relative;overflow:hidden}
+.kpi::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--bar,var(--border))}
+.kpi b{display:block;white-space:nowrap;font:600 22px/1.2 var(--mono);font-variant-numeric:tabular-nums;margin:6px 0 2px}
+.kpi b small{font-size:13px;color:var(--muted);font-weight:500;margin-left:4px}
+.kpi .note{font-size:12px}
+@media (max-width:520px){.kpis{grid-template-columns:1fr 1fr}.kpi b{font-size:18px}}
+.note{color:var(--muted);font-size:12px}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:8px 16px;font-size:13px;margin:0}
+.kv dt{color:var(--muted)}.kv dd{margin:0;text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums}
+.meter{height:8px;border-radius:4px;background:var(--surface-2);overflow:hidden}
+.meter>i{display:block;height:100%;background:var(--success);border-radius:4px}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.between{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.banner{border-radius:10px;padding:10px 14px;font-size:13px;margin-bottom:16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.banner.warn{background:color-mix(in srgb,var(--warning) 12%,transparent);color:var(--warning)}
+.banner.bad{background:color-mix(in srgb,var(--danger) 12%,transparent);color:var(--danger)}
+.banner.info{background:var(--primary-weak);color:var(--primary)}
+.addr{font:12px var(--mono);color:var(--muted)}
+.seg{display:inline-flex;background:var(--surface-2);border-radius:8px;padding:3px;gap:2px;flex-wrap:wrap}
+.seg button{border:0;background:transparent;color:var(--muted);font:500 12px var(--sans);padding:4px 10px;border-radius:6px;cursor:pointer}
+.seg button[aria-pressed=true]{background:var(--surface);color:var(--text);box-shadow:0 0 0 1px var(--border)}
+.empty{color:var(--muted);font-size:13px;padding:24px 0;text-align:center}
+ul.plain{margin:0;padding-left:18px;color:var(--muted);font-size:13px;display:flex;flex-direction:column;gap:4px}
+
+/* hero */
+.hero{display:flex;flex-direction:column;gap:6px}
+.hero .big{font:600 40px/1.1 var(--mono);font-variant-numeric:tabular-nums}
+.hero .big small{font-size:16px;color:var(--muted);font-weight:500;margin-left:6px}
+
+/* table */
+.tbl{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{font-weight:500;color:var(--muted);font-size:12px;text-align:left;padding:8px;border-bottom:1px solid var(--border);white-space:nowrap;position:sticky;top:0;background:var(--surface)}
+td{padding:10px 8px;border-bottom:1px solid var(--border);vertical-align:middle;white-space:nowrap}
+td.r,th.r{text-align:right}td.c,th.c{text-align:center}
+tbody tr:hover td{background:color-mix(in srgb,var(--surface-2) 50%,transparent)}
+tr:last-child td{border-bottom:0}
+
+/* forms */
+.form{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;align-items:end}
+.f label{display:block;font-size:12px;color:var(--muted);margin-bottom:4px}
+.f input{width:100%;height:34px;border-radius:8px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);padding:0 10px;font:13px var(--mono)}
+.quote{background:var(--surface-2);border-radius:8px;padding:10px 12px;display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px}
+.quote small{display:block;color:var(--muted);font-size:11px}
+.quote b{font:600 15px var(--mono)}
+
+/* periods */
+.periods{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:6px}
+.side-grid .periods{grid-template-columns:repeat(6,minmax(0,1fr))}
+@media (max-width:520px){.periods{grid-template-columns:repeat(6,minmax(0,1fr))}}
+.cell{aspect-ratio:1.3;border-radius:6px;display:grid;place-items:center;font:500 12px var(--mono)}
+.s-claimed{background:var(--surface-2);color:var(--faint)}
+.s-due{background:var(--success);color:#0b1a12}
+.s-due.blk{background:color-mix(in srgb,var(--danger) 22%,transparent);color:var(--danger)}
+.s-dueNF{background:color-mix(in srgb,var(--danger) 22%,transparent);color:var(--danger)}
+.s-future{background:color-mix(in srgb,var(--s1) 20%,transparent);color:var(--s1)}
+.s-listed{background:color-mix(in srgb,var(--s1) 10%,transparent);color:var(--warning);outline:1.5px dashed var(--warning);outline-offset:-1.5px}
+.s-sold{background:color-mix(in srgb,var(--s2) 22%,transparent);color:var(--s2)}
+.cell.mine{box-shadow:inset 0 0 0 2px var(--text)}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12px;color:var(--muted);margin-top:12px}
+.legend span{display:inline-flex;gap:6px;align-items:center}
+.legend i{width:12px;height:12px;border-radius:3px;display:inline-block}
+.legend i.ln{height:2px;width:16px;border-radius:1px}
+
+/* chart */
+.chart{position:relative;width:100%}
+.chart svg{display:block;width:100%;height:auto;overflow:visible}
+.chart text{font:11px var(--mono);fill:var(--muted)}
+.chart .gl{stroke:var(--grid);stroke-width:1}
+.chart .hit{fill:transparent;cursor:crosshair}
+.tip{position:fixed;z-index:70;pointer-events:none;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:12px;box-shadow:0 8px 24px rgba(0,0,0,.35);min-width:150px;max-width:260px}
+.tip .t{font-weight:600;margin-bottom:4px}
+.tip .r{display:flex;justify-content:space-between;gap:14px}
+.tip .r span:first-child{display:inline-flex;gap:6px;align-items:center;color:var(--muted)}
+.tip .r span:last-child{font-family:var(--mono)}
+.tip i{width:8px;height:8px;border-radius:2px;display:inline-block}
+.stackbar{display:flex;height:14px;border-radius:4px;overflow:hidden;gap:2px;margin:10px 0 12px}
+.stackbar i{display:block;height:100%}
+
+/* events */
+.ev{list-style:none;margin:0;padding:0}
+.ev li{display:grid;grid-template-columns:auto 1fr auto;gap:12px;padding:9px 0;border-bottom:1px solid var(--border);font-size:13px;align-items:center}
+.ev li:last-child{border-bottom:0}
+.dot{width:8px;height:8px;border-radius:50%;flex:none}
+.y{color:var(--success)}.n{color:var(--faint)}.a{color:var(--warning)}
+
+.modal-bg{position:fixed;inset:0;background:rgba(5,6,12,.6);z-index:90;display:grid;place-items:center;padding:16px}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:14px;max-width:620px;width:100%;max-height:90vh;overflow:auto;padding:22px}
+.txbox{background:var(--surface-2);border-radius:8px;padding:10px 12px;margin-top:8px;font-size:12px}
+.txbox .note{display:block;margin-top:6px}
+.txbox code{font:11px var(--mono);word-break:break-all;display:block;color:var(--text);margin-top:2px}
+.lock{display:flex;gap:12px;align-items:flex-start;padding:16px;border:1px dashed var(--border);border-radius:10px;color:var(--muted);font-size:13px}
+.lock svg{width:18px;height:18px;flex:none;margin-top:2px}
+.chk{display:inline-flex;align-items:center;gap:8px;padding:6px 12px;border:1px solid var(--border);border-radius:8px;cursor:pointer;font-size:13px}
+.chk input{accent-color:var(--primary)}
+.f select{width:100%;height:34px;border-radius:8px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);padding:0 8px;font:13px var(--sans)}
+#toasts{position:fixed;right:16px;bottom:16px;display:flex;flex-direction:column;gap:8px;z-index:80;max-width:min(380px,calc(100vw - 32px))}
+.toast{background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--bar,var(--primary));border-radius:8px;padding:10px 12px;font-size:13px;box-shadow:0 8px 24px rgba(0,0,0,.35)}
+.toast code{font:11px var(--mono);display:block;margin-top:2px}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <aside class="side" id="side">
+    <div class="brand"><span class="logo">FT</span><div>FamilyTrust<small>鏈上信託控制台 · V2</small></div></div>
+    <button class="trustsel" id="trustSel" title="切換信託合約"><div><b id="tsAddr">尚未載入</b><span id="tsSub">Sepolia</span></div><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 9l4-4 4 4M16 15l-4 4-4-4"/></svg></button>
+    <nav class="nav" id="nav"></nav>
+    <div class="side-foot"><div class="wallet" id="walletBox"></div></div>
+  </aside>
+  <div class="mainc">
+    <header class="topbar">
+      <button class="btn ghost menu-btn" id="menuBtn" aria-label="選單"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+      <div class="crumb" id="crumb"></div>
+      <span class="pill" id="statusPill"></span>
+      <button class="btn ghost" id="refreshBtn" title="重新整理"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5"/></svg></button>
+      <button class="btn pri" id="connectBtn">連接錢包</button>
+    </header>
+    <main class="page"><div id="banner"></div><div id="view"></div></main>
+  </div>
+</div>
+<div id="toasts"></div>
+<div class="tip" id="tip" hidden></div>
+
+<script>
+(function(){
+"use strict";
+const RPC="https://ethereum-sepolia-rpc.publicnode.com", CHAIN_HEX="0xaa36a7", CHAIN_ID=11155111n, SCAN="https://sepolia.etherscan.io";
+const FAIR_APR=800;
+
+const TRUST_ABI=[
+ "function version() view returns (string)","function token() view returns (address)","function settlor() view returns (address)","function beneficiary() view returns (address)",
+ "function upgradeAdmin() view returns (address)","function upgradesFrozen() view returns (bool)",
+ "function startTime() view returns (uint256)","function interval() view returns (uint256)","function amountPerPeriod() view returns (uint256)","function totalPeriods() view returns (uint256)",
+ "function unpaidLiabilities() view returns (uint256)","function coverageBps() view returns (uint256)","function poolBalance() view returns (uint256)","function bidEscrow() view returns (uint256)",
+ "function pausedUntil() view returns (uint256)","function pauseUsedPeriods() view returns (uint256)","function maxPausePeriods() view returns (uint256)","function pauseBudgetPeriods() view returns (uint256)",
+ "function maxAprBps() view returns (uint256)","function periodsPerYear() view returns (uint256)","function payWindow() view returns (uint256)",
+ "function getPeriods() view returns (address[] owners,bool[] claimedArr,uint256[] dueTimes)",
+ "function getListings() view returns (tuple(uint256 fromId,uint256 toId,uint256 price,bool active,address seller,address buyer)[])",
+ "function getBids() view returns (tuple(address maker,uint256 aprBps,uint256 budget,uint256 maxPeriods,bool active)[])",
+ "function getPayees() view returns (address[] addrs,bool[] approved,uint256[] caps,uint256[] usedNow,string[] labels)",
+ "function quote(uint256 fromId,uint256 toId,uint256 aprBps) view returns (uint256)","function impliedAprBps(uint256) view returns (uint256)","function listingDiscountBps(uint256) view returns (uint256)",
+ "function fund(uint256 amountTokens)","function claim()","function claimAndPay(address payee,uint256 amount,string memo)","function payFromWallet(address payee,uint256 amount,string memo)",
+ "function proposePayee(address payee,uint256 capTokens,string label)","function approvePayee(address payee)","function removePayee(address payee)",
+ "function pause(uint256 periods)","function unpause()",
+ "function listPeriods(uint256 fromId,uint256 toId,uint256 priceTokens) returns (uint256)","function cancelListing(uint256)","function buy(uint256)",
+ "function placeBid(uint256 aprBps,uint256 budgetTokens,uint256 maxPeriods) returns (uint256)","function cancelBid(uint256)","function sellToBid(uint256 bidId,uint256 fromId,uint256 toId)",
+ "function transferPeriods(address to,uint256 fromId,uint256 toId)","function freezeUpgrades()","function setUpgradeAdmin(address)",
+ "error NotSettlor()","error NotBeneficiary()","error NotUpgradeAdmin()","error UpgradesFrozen()","error InvalidParams()","error ZeroAmount()","error InvalidRange()",
+ "error OverFunded()","error InsufficientFunds()","error NotFullyFunded()","error NothingToClaim()","error PeriodAlreadyDue()","error PeriodNotOwned()","error AlreadyListed()",
+ "error PriceTooHigh()","error AprTooHigh()","error ListingNotActive()","error CannotBuyOwn()","error SettlorCannotBuy()","error TrustPaused()","error AlreadyPaused()","error NotPaused()",
+ "error PauseTooLong()","error PauseBudgetExceeded()","error BidNotActive()","error NotBidMaker()","error BidTooSmall()","error BeneficiaryCannotTransfer()","error PayeeNotApproved()","error PayCapExceeded()","error Reentrancy()",
+ "error SafeERC20FailedOperation(address)","error ERC20InsufficientAllowance(address,uint256,uint256)","error ERC20InsufficientBalance(address,uint256,uint256)"];
+const SAFE_ABI=["function getThreshold() view returns (uint256)","function getOwners() view returns (address[])"];
+const CONSENT_ABI=["function grant(address viewer,uint8 scopes,uint64 expiry)","function revoke(address viewer)","function grants(address,address) view returns (uint8 scopes,uint64 expiry)","function canView(address,address,uint8) view returns (bool)",
+ "event Granted(address indexed owner,address indexed viewer,uint8 scopes,uint64 expiry)","event Revoked(address indexed owner,address indexed viewer)",
+ "error InvalidScopes()","error InvalidExpiry()","error SelfGrant()"];
+const SCOPES=[[1,"支付紀錄","代幣轉入、轉出"],[2,"質押紀錄","質押與解除質押部位"],[4,"借貸紀錄","借款、還款與健康度"]];
+const ZH2={InvalidScopes:"請至少選一個類別",InvalidExpiry:"到期時間必須在未來",SelfGrant:"不能授權給自己"};
+const ERC20_ABI=["function balanceOf(address) view returns (uint256)","function allowance(address,address) view returns (uint256)","function approve(address,uint256) returns (bool)","function decimals() view returns (uint8)","function symbol() view returns (string)"];
+const ZH={NotSettlor:"只有出資人可以執行這個動作",NotBeneficiary:"只有受益人可以執行這個動作",CannotBuyOwn:"受益人不能承購自己的掛單",SettlorCannotBuy:"出資人不能承購（避免利益衝突）",
+ InvalidParams:"部署參數不合法",ZeroAmount:"金額不能是 0",InvalidRange:"期數範圍不正確",OverFunded:"存入後會超過未付總額",InsufficientFunds:"信託餘額不足（要保留承購人的期數）",
+ NotFullyFunded:"信託尚未存足，暫時不能掛單或承購",NothingToClaim:"目前沒有到期可領的期數",PeriodAlreadyDue:"第一期已到期，不能掛單或承購",PeriodNotOwned:"範圍內有期數已經賣出",
+ AlreadyListed:"範圍內有期數已在其他掛單中",PriceTooHigh:"售價必須低於面額",AprTooHigh:"售價太低：隱含年化超過合約上限",ListingNotActive:"這張掛單已成交或已取消",
+ TrustPaused:"出資人暫停中，受益人暫時不能領取或掛單",AlreadyPaused:"已經在暫停中",NotPaused:"目前沒有暫停",PauseTooLong:"超過單次暫停上限",PauseBudgetExceeded:"超過累計暫停額度",
+ ReentrancyGuardReentrantCall:"重入保護觸發",SafeERC20FailedOperation:"代幣轉帳失敗",ERC20InsufficientAllowance:"授權額度不足",ERC20InsufficientBalance:"錢包代幣餘額不足",NotUpgradeAdmin:"只有升級管理員可以執行",UpgradesFrozen:"升級已永久凍結",BidNotActive:"這個收購報價已成交或取消",NotBidMaker:"只有掛報價的做市商可以取消",BidTooSmall:"報價剩餘預算或期數不夠",BeneficiaryCannotTransfer:"受益人不能直接轉讓期數，請用掛單或賣給報價",PayeeNotApproved:"收款方尚未經雙方核可",PayCapExceeded:"超過這個收款方本期間的付款上限",Reentrancy:"重入保護觸發"};
+const EVENTS={
+ "Funded(address,uint256)":{n:"存入",c:"var(--success)",k:"fund"},
+ "Claimed(address,uint256,uint256)":{n:"領取",c:"var(--s1)",k:"claim"},
+ "Listed(uint256,address,uint256,uint256,uint256)":{n:"掛單",c:"var(--warning)",k:"list"},
+ "ListingCancelled(uint256)":{n:"取消掛單",c:"var(--faint)",k:"cancel"},
+ "PeriodsSold(uint256,address,uint256)":{n:"承購成交",c:"var(--s2)",k:"sold"},
+ "Paused(address,uint256)":{n:"暫停",c:"var(--danger)",k:"pause"},
+ "Unpaused(address)":{n:"恢復",c:"var(--primary)",k:"unpause"},
+ "BidPlaced(uint256,address,uint256,uint256,uint256)":{n:"收購報價",c:"var(--s2)",k:"bid"},
+ "BidCancelled(uint256,uint256)":{n:"取消報價",c:"var(--faint)",k:"bid"},
+ "BidFilled(uint256,address,uint256,uint256,uint256)":{n:"報價成交",c:"var(--s2)",k:"sold"},
+ "PeriodsTransferred(address,address,uint256,uint256)":{n:"期數轉讓",c:"var(--s2)",k:"sold"},
+ "PayeeProposed(address,uint256,string)":{n:"提名收款方",c:"var(--primary)",k:"pay"},
+ "PayeeApproved(address)":{n:"核可收款方",c:"var(--success)",k:"pay"},
+ "PayeeRemoved(address,address)":{n:"移除收款方",c:"var(--faint)",k:"pay"},
+ "Paid(address,uint256,bool,string)":{n:"付款",c:"var(--success)",k:"pay"}};
+const EV_IFACE=new ethers.Interface(Object.keys(EVENTS).map(s=>"event "+s.replace(/\((.*)\)/,(m,a)=>"("+a.split(",").filter(Boolean).map((t,i)=>t+" a"+i).join(",")+")")));
+const TOPIC={};Object.keys(EVENTS).forEach(s=>TOPIC[ethers.id(s)]=s);
+
+const IC={
+ grid:'<path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z"/>',
+ user:'<circle cx="12" cy="8" r="4"/><path d="M4 20c1.5-4 4.5-6 8-6s6.5 2 8 6"/>',
+ wallet:'<rect x="3" y="6" width="18" height="13" rx="2"/><path d="M16 12.5h2M3 9h18"/>',
+ bag:'<path d="M5 8h14l-1 12H6zM9 8V6a3 3 0 0 1 6 0v2"/>',
+ flow:'<path d="M3 17l5-5 4 4 8-8M15 8h5v5"/>',
+ tag:'<path d="M3 12V4h8l10 10-8 8z"/><circle cx="7.5" cy="8.5" r="1.5"/>',
+ book:'<path d="M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3z"/><path d="M5 17a3 3 0 0 1 3-3h11"/>',
+ shield:'<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/>',
+ lock:'<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',
+ eye:'<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
+ card:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18M7 15h3"/>',
+ chart:'<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',
+ gear:'<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/>'};
+const ico=k=>'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'+IC[k]+'</svg>';
+const PAGES=[
+ {g:"工作台"},
+ {id:"overview",n:"總覽",i:"grid"},
+ {id:"settlor",n:"出資人",i:"wallet",role:"settlor"},
+ {id:"beneficiary",n:"受益人",i:"user",role:"beneficiary"},
+ {id:"buyer",n:"承購人",i:"bag",role:"buyer"},
+ {id:"pay",n:"支付",i:"card"},
+ {id:"mm",n:"做市商",i:"chart"},
+ {id:"records",n:"受益人財務紀錄",i:"eye"},
+ {g:"分析"},
+ {id:"cashflow",n:"現金流",i:"flow"},
+ {id:"market",n:"承購市場與定價",i:"tag"},
+ {id:"ledger",n:"帳簿",i:"book"},
+ {g:"系統"},
+ {id:"rules",n:"規則與權限",i:"shield"},
+ {id:"settings",n:"設定",i:"gear"}];
+const ROLE_N={settlor:"出資人",beneficiary:"受益人",buyer:"承購人"};
+
+/* ---------- state ---------- */
+let consentAddr="",cIface=new ethers.Interface(CONSENT_ABI),S=null,me=null,signer=null,wprov=null,rprov=null,demo=false,trustAddr="",chainOffset=0,busy={},page="overview",loading=false;
+const $=s=>document.querySelector(s);
+const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const same=(a,b)=>!!a&&!!b&&a.toLowerCase()===b.toLowerCase();
+const short=a=>a?a.slice(0,6)+"…"+a.slice(-4):"—";
+const now=()=>Math.floor(Date.now()/1000)+chainOffset;
+const fnum=(n,dp)=>Number(n).toLocaleString("zh-TW",{maximumFractionDigits:dp==null?2:dp});
+function tok(v,dp){if(v==null||!S)return"—";return fnum(Number(ethers.formatUnits(v,S.decimals)),dp);}
+const tokN=v=>Number(ethers.formatUnits(v,S.decimals));
+const pct=bps=>bps==null?"—":fnum(Number(bps)/100)+"%";
+function dur(s){s=Math.max(0,Math.floor(s));const d=Math.floor(s/86400),h=Math.floor(s%86400/3600),m=Math.floor(s%3600/60),x=s%60;
+ if(d)return d+"天 "+h+"時";if(h)return h+"時 "+String(m).padStart(2,"0")+"分";return String(m).padStart(2,"0")+":"+String(x).padStart(2,"0");}
+function hm(ts){const d=new Date((ts-chainOffset)*1000);return d.toLocaleString("zh-TW",{month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",hour12:false});}
+function tm(ts){const d=new Date((ts-chainOffset)*1000);return d.toLocaleTimeString("zh-TW",{hour:"2-digit",minute:"2-digit",hour12:false});}
+const link=(a,l)=>a?'<a href="'+SCAN+'/address/'+a+'" target="_blank" rel="noopener" class="addr">'+esc(l||short(a))+'</a>':"—";
+function who(a){if(!S||!a)return"—";if(same(a,S.beneficiary))return"受益人";if(same(a,S.settlor))return"出資人";if(S.bids&&S.bids.some(b=>same(b.maker,a)))return"做市商 "+short(a);return"承購人 "+short(a);}
+function payeeName(a){const p=S&&S.payees&&S.payees.find(x=>same(x.addr,a));return p?p.label+" "+short(a):short(a);}
+const holderAddr=()=>demo?S.demoAddrs.buyer:me;
+function toast(msg,kind,hash){const t=document.createElement("div");t.className="toast";t.style.setProperty("--bar",kind==="bad"?"var(--danger)":kind==="ok"?"var(--success)":"var(--primary)");
+ t.innerHTML=esc(msg)+(hash?'<code><a href="'+SCAN+'/tx/'+hash+'" target="_blank" rel="noopener">'+short(hash)+' ↗</a></code>':"");$("#toasts").appendChild(t);setTimeout(()=>t.remove(),kind==="bad"?9000:6000);}
+const lsGet=k=>{try{return localStorage.getItem(k)}catch(e){return null}};
+const lsSet=(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}};
+const isOwner=(safe,a)=>!!safe&&!!a&&safe.owners.some(o=>same(o,a));
+const isOwnerSafe=(sf,a)=>!!sf&&!!a&&(sf.owners||[]).some(o=>same(o,a));
+function myRole(){if(!S||demo||!me)return null;if(same(me,S.settlor)||isOwner(S.setSafe,me))return"settlor";if(same(me,S.beneficiary)||isOwner(S.benSafe,me))return"beneficiary";return"buyer";}
+/* 需要走 Safe 的角色：回傳 Safe 地址 */
+function safeFor(role){if(!S)return null;const sf=role==="beneficiary"?S.benSafe:role==="settlor"?S.setSafe:null;if(!sf)return null;
+ const addr=role==="beneficiary"?S.beneficiary:S.settlor;if(demo)return addr;return isOwner(sf,me)?addr:null;}
+const consentOn=sc=>!!S&&!!S.consent&&S.consent.expiry>now()&&(S.consent.scopes&sc)===sc;
+const canSeeRecords=()=>demo||(!!me&&!!S&&(same(me,S.settlor)||isOwner(S.setSafe,me)));
+const buyerAddr=()=>demo?S.demoAddrs.buyer:(myRole()==="buyer"?me:null);
+const nowX=D=>Math.min(S.total,Math.max(0,(D.t-S.start)/S.interval));
+
+/* ---------- derive ---------- */
+function derive(){
+ const t=now(),P=S.total,due=t<S.start?0:Math.min(P,Math.floor((t-S.start)/S.interval));
+ const listedIn=new Array(P).fill(-1);S.listings.forEach((l,i)=>{if(l.active)for(let k=l.fromId;k<=l.toId;k++)listedIn[k]=i;});
+ const paused=t<S.pausedUntil,periods=[];
+ for(let i=0;i<P;i++){const owner=S.owners[i],c=S.claimed[i],isDue=i<due;
+  const st=c?"claimed":isDue?"due":listedIn[i]>=0?"listed":same(owner,S.beneficiary)?"future":"sold";
+  periods.push({i,owner,claimed:c,due:isDue,st,listing:listedIn[i],dueAt:S.start+(i+1)*S.interval,ben:same(owner,S.beneficiary)});}
+ const benDue=periods.filter(p=>p.due&&!p.claimed&&p.ben).length;
+ const dueUnpaid=periods.filter(p=>p.due&&!p.claimed).length,payable=S.balance>=S.amount*BigInt(dueUnpaid);
+ if(!payable)periods.forEach(p=>{if(p.st==="due")p.st="dueNF";});
+ const next=due<P?{i:due,at:S.start+(due+1)*S.interval}:null;
+ const cnt=k=>periods.filter(p=>p.st===k).length;
+ return {t,due,paused,periods,benDue,next,payable,pauseLeft:Math.max(0,S.pauseBudget-S.pauseUsed),fullyFunded:S.balance>=S.unpaid,
+  n:{claimed:cnt("claimed"),due:cnt("due")+cnt("dueNF"),dueNF:cnt("dueNF"),future:cnt("future"),listed:cnt("listed"),sold:cnt("sold")},
+  soldTotal:periods.filter(p=>!p.ben).length,soldUnclaimed:periods.filter(p=>!p.ben&&!p.claimed).length,
+  deals:S.listings.filter(l=>!l.active&&l.buyer&&l.buyer!==ethers.ZeroAddress)};
+}
+
+/* ---------- load ---------- */
+async function load(){
+ if(demo){S=mock();render();return;}
+ if(!trustAddr){S=null;render();return;}
+ loading=true;renderChrome();
+ const prov=(wprov&&signer)?wprov:rprov, c=new ethers.Contract(trustAddr,TRUST_ABI,prov);
+ try{
+  const ver=await c.version().catch(()=>null);
+  if(!ver||!String(ver).startsWith("2")){loading=false;toast("這不是 FamilyTrustV2 合約。舊版合約請到 zoo100130.github.io/dapp_family-trust_test 查看","bad");S=null;render();return;}
+  const [token,settlor,beneficiary,admin,frozen,start,interval,amount,total,unpaid,cov,pool,escrow,pausedUntil,usedV,maxPause,budgetV,maxApr,ppy,payWin,per,lsRaw,bidsRaw,pys,blk]=await Promise.all([
+   c.token(),c.settlor(),c.beneficiary(),c.upgradeAdmin(),c.upgradesFrozen(),c.startTime(),c.interval(),c.amountPerPeriod(),c.totalPeriods(),c.unpaidLiabilities(),c.coverageBps(),
+   c.poolBalance(),c.bidEscrow(),c.pausedUntil(),c.pauseUsedPeriods(),c.maxPausePeriods(),c.pauseBudgetPeriods(),c.maxAprBps(),c.periodsPerYear(),c.payWindow(),
+   c.getPeriods(),c.getListings(),c.getBids(),c.getPayees(),prov.getBlock("latest")]);
+  const startV=start;
+  chainOffset=Number(blk.timestamp)-Math.floor(Date.now()/1000);
+  const erc=new ethers.Contract(token,ERC20_ABI,prov),P=Number(total);
+  const claimed=[...per.claimedArr],owners=[...per.owners];
+  const ls=await Promise.all([...lsRaw].map(async(l,i)=>{const [apr,disc]=await Promise.all([c.impliedAprBps(i).catch(()=>0n),c.listingDiscountBps(i).catch(()=>0n)]);
+   return {id:i,fromId:Number(l.fromId),toId:Number(l.toId),price:l.price,active:l.active,seller:l.seller,buyer:l.buyer,apr:Number(apr),disc:Number(disc)};}));
+  const bids=[...bidsRaw].map((b,i)=>({id:i,maker:b.maker,apr:Number(b.aprBps),budget:b.budget,maxPeriods:Number(b.maxPeriods),active:b.active}));
+  const payees=[...pys.addrs].map((a,i)=>({addr:a,approved:pys.approved[i],removed:pys.caps[i]===ethers.MaxUint256,cap:pys.caps[i]===ethers.MaxUint256?0n:pys.caps[i],used:pys.usedNow[i],label:pys.labels[i]}));
+  const [dec,sym]=await Promise.all([erc.decimals(),erc.symbol().catch(()=>"FTUSD")]);const bal=pool;
+  let myBal=null;if(me)myBal=await erc.balanceOf(me);
+  const keep=S&&S.addr===trustAddr;
+  S={addr:trustAddr,token,symbol:sym,decimals:Number(dec),unit:10n**BigInt(dec),settlor,beneficiary,start:Number(startV),interval:Number(interval),amount,total:P,
+   unpaid,cov:Number(cov),balance:bal,benSafe:keep?S.benSafe:null,setSafe:keep?S.setSafe:null,consent:keep?S.consent:null,cEvents:keep?S.cEvents:[],payments:keep?S.payments:[],extrasLoaded:keep?S.extrasLoaded:false,pausedUntil:Number(pausedUntil),pauseUsed:Number(usedV),maxPause:Number(maxPause),pauseBudget:Number(budgetV),
+   maxApr:Number(maxApr),ppy:Number(ppy),claimed,owners,listings:ls,myBal,events:keep?S.events:[],evLoaded:keep?S.evLoaded:false,
+   version:String(ver),upgradeAdmin:admin,upgradesFrozen:frozen,bidEscrow:escrow,bids,payees,payWindow:Number(payWin)};
+  loading=false;render();loadEvents(prov);loadExtras(prov);
+ }catch(e){console.error(e);loading=false;toast("讀不到信託合約：請確認地址正確、網路是 Sepolia","bad");S=null;render();}
+}
+async function safeInfo(a,prov){try{const code=await prov.getCode(a);if(!code||code==="0x")return null;const s=new ethers.Contract(a,SAFE_ABI,prov);
+ const [t,o]=await Promise.all([s.getThreshold(),s.getOwners()]);return{threshold:Number(t),owners:[...o]};}catch(e){return null;}}
+async function loadExtras(prov){
+ if(!S)return;const addr=S.addr;
+ const [benSafe,setSafe]=await Promise.all([safeInfo(S.beneficiary,prov),safeInfo(S.settlor,prov)]);
+ let consent=null,cEvents=[],payments=[];
+ if(consentAddr){try{const cc=new ethers.Contract(consentAddr,CONSENT_ABI,prov);const g=await cc.grants(S.beneficiary,S.settlor);consent={scopes:Number(g.scopes),expiry:Number(g.expiry)};
+   const head=await prov.getBlockNumber();const logs=await prov.getLogs({address:consentAddr,fromBlock:Math.max(0,head-9000),toBlock:head,topics:[null,ethers.zeroPadValue(S.beneficiary,32)]}).catch(()=>[]);
+   cEvents=logs.map(l=>{try{const e=cIface.parseLog(l);return{n:e.name,viewer:e.args.viewer,scopes:e.name==="Granted"?Number(e.args.scopes):0,expiry:e.name==="Granted"?Number(e.args.expiry):0,block:l.blockNumber,tx:l.transactionHash};}catch(x){return null;}}).filter(Boolean).reverse();
+  }catch(e){console.warn("consent",e);}}
+ try{const T=ethers.id("Transfer(address,address,uint256)"),b=ethers.zeroPadValue(S.beneficiary,32),head=await prov.getBlockNumber(),from=Math.max(0,head-9000);
+  const [outs,ins]=await Promise.all([prov.getLogs({address:S.token,fromBlock:from,toBlock:head,topics:[T,b]}).catch(()=>[]),prov.getLogs({address:S.token,fromBlock:from,toBlock:head,topics:[T,null,b]}).catch(()=>[])]);
+  payments=[...outs.map(l=>({dir:"out",cp:ethers.getAddress("0x"+l.topics[2].slice(26)),v:BigInt(l.data),block:l.blockNumber,tx:l.transactionHash})),
+            ...ins.map(l=>({dir:"in",cp:ethers.getAddress("0x"+l.topics[1].slice(26)),v:BigInt(l.data),block:l.blockNumber,tx:l.transactionHash}))].sort((a,b)=>b.block-a.block);
+ }catch(e){console.warn("payments",e);}
+ if(S&&S.addr===addr){S.benSafe=benSafe;S.setSafe=setSafe;S.consent=consent;S.cEvents=cEvents;S.payments=payments;S.extrasLoaded=true;render();}
+}
+async function loadEvents(prov){
+ try{const head=await prov.getBlockNumber();let logs=[];
+  for(const span of [9000,3000,1000]){try{logs=await prov.getLogs({address:trustAddr,fromBlock:Math.max(0,head-span),toBlock:head});break;}catch(e){}}
+  const ev=logs.map(l=>{const sig=TOPIC[l.topics[0]];if(!sig)return null;let args=null;try{args=EV_IFACE.parseLog(l).args;}catch(e){}
+   return {sig,args,block:l.blockNumber,tx:l.transactionHash};}).filter(Boolean).reverse();
+  const blocks={};await Promise.all([...new Set(ev.slice(0,40).map(e=>e.block))].map(async b=>{try{blocks[b]=(await prov.getBlock(b)).timestamp;}catch(e){}}));
+  ev.forEach(e=>e.ts=blocks[e.block]?Number(blocks[e.block]):null);
+  if(S){S.events=ev;S.evLoaded=true;render();}
+ }catch(e){console.warn("events",e);if(S){S.evLoaded=true;render();}}
+}
+
+/* ---------- demo ---------- */
+function mock(){
+ const iv=300,t=Math.floor(Date.now()/1000);chainOffset=0;
+ const U=10n**6n,A=500n*U,P=24;
+ const ben="0xBe11e0000000000000000000000000000000beef",set="0x5e77100000000000000000000000000000005e71",buy="0xB0B0000000000000000000000000000000b0b0b0";
+ const start=t-Math.floor(4.62*iv);
+ const claimed=[...Array(P)].map((_,i)=>i<2);
+ const owners=[...Array(P)].map((_,i)=>i>=7&&i<=9?buy:(i===10||i===11)?"0xA4A4000000000000000000000000000000004a4a":ben);
+ const mm="0xA4A4000000000000000000000000000000004a4a",hosp="0x40501700000000000000000000000000000040a1",care="0xCA4E000000000000000000000000000000000ca4";
+ const listings=[{id:0,fromId:7,toId:9,price:1430n*U,active:false,seller:ben,buyer:buy,apr:812,disc:467},
+  {id:1,fromId:12,toId:14,price:1395n*U,active:true,seller:ben,buyer:ethers.ZeroAddress,apr:798,disc:700},
+  {id:2,fromId:16,toId:17,price:905n*U,active:true,seller:ben,buyer:ethers.ZeroAddress,apr:1120,disc:950},
+  {id:3,fromId:9,toId:9,price:488n*U,active:true,seller:buy,buyer:ethers.ZeroAddress,apr:610,disc:240}];
+ const unpaid=BigInt(P-2)*A;
+ return {addr:"demo",token:"0x7070000000000000000000000000000000007070",symbol:"FTUSD",decimals:6,unit:U,settlor:set,beneficiary:ben,
+  start,interval:iv,amount:A,total:P,unpaid,cov:10000,balance:unpaid,pausedUntil:0,pauseUsed:0,maxPause:3,pauseBudget:6,maxApr:2500,ppy:12,
+  claimed,owners,listings,myBal:5000n*U,demoAddrs:{settlor:set,beneficiary:ben,buyer:buy,mm},evLoaded:true,extrasLoaded:true,
+  version:"2.0.0",upgradeAdmin:set,upgradesFrozen:false,payWindow:1800,bidEscrow:3000n*U,
+  bids:[{id:0,maker:mm,apr:900,budget:2000n*U,maxPeriods:4,active:true},{id:1,maker:buy,apr:1500,budget:1000n*U,maxPeriods:2,active:true},{id:2,maker:mm,apr:700,budget:0n,maxPeriods:0,active:false}],
+  payees:[{addr:hosp,approved:true,removed:false,cap:800n*U,used:300n*U,label:"仁愛醫院"},{addr:care,approved:false,removed:false,cap:1500n*U,used:0n,label:"松柏安養中心"}],
+  benSafe:{threshold:2,owners:["0xA11ce00000000000000000000000000000000a11","0xB0bb100000000000000000000000000000000b0b","0xCa7e000000000000000000000000000000000ca7"]},setSafe:null,
+  consent:{scopes:7,expiry:t+7*86400},
+  cEvents:[{n:"Granted",viewer:set,scopes:7,expiry:t+7*86400,ts:t-400,tx:"0x"+"9a".repeat(32)},{n:"Revoked",viewer:set,scopes:0,expiry:0,ts:t-3000,tx:"0x"+"9b".repeat(32)},{n:"Granted",viewer:set,scopes:1,expiry:t-1000,ts:t-6000,tx:"0x"+"9c".repeat(32)}],
+  payments:[{dir:"in",cp:buy,v:1430n*U,ts:t-500,tx:"0x"+"ab".repeat(32)},{dir:"out",cp:"0xAAe0000000000000000000000000000000000aae",v:800n*U,ts:t-850,tx:"0x"+"a1".repeat(32)},
+   {dir:"in",cp:"TRUST",v:1000n*U,ts:t-900,tx:"0x"+"34".repeat(32)},{dir:"out",cp:"0x1d00000000000000000000000000000000000001",v:300n*U,ts:t-1100,tx:"0x"+"a2".repeat(32)},{dir:"out",cp:"0x5ea1000000000000000000000000000000005ea1",v:120n*U,ts:t-1200,tx:"0x"+"a3".repeat(32)}],
+  staking:[{p:"Lido",asset:"stETH",amt:"1.20 ETH",since:t-86400*3,st:"質押中"},{p:"Rocket Pool",asset:"rETH",amt:"0.40 ETH",since:t-86400*9,st:"解除中"}],
+  lending:{hf:1.82,rows:[{p:"Aave v3",type:"抵押",asset:"WETH",amt:"0.80 ETH"},{p:"Aave v3",type:"借款",asset:"USDC",amt:"800 USDC"},{p:"Aave v3",type:"還款",asset:"USDC",amt:"200 USDC"}]},
+  events:[
+   {sig:"PeriodsSold(uint256,address,uint256)",args:[0n,buy,1430n*U],tx:"0x"+"ab".repeat(32),ts:t-500},
+   {sig:"Listed(uint256,address,uint256,uint256,uint256)",args:[2n,ben,16n,17n,905n*U],tx:"0x"+"cd".repeat(32),ts:t-640},
+   {sig:"Listed(uint256,address,uint256,uint256,uint256)",args:[1n,ben,12n,14n,1395n*U],tx:"0x"+"ef".repeat(32),ts:t-700},
+   {sig:"Listed(uint256,address,uint256,uint256,uint256)",args:[0n,ben,7n,9n,1430n*U],tx:"0x"+"12".repeat(32),ts:t-820},
+   {sig:"Claimed(address,uint256,uint256)",args:[ben,2n,1000n*U],tx:"0x"+"34".repeat(32),ts:t-900},
+   {sig:"Paid(address,uint256,bool,string)",args:["0x40501700000000000000000000000000000040a1",300n*U,true,"門診與藥費"],tx:"0x"+"61".repeat(32),ts:t-300},
+   {sig:"BidFilled(uint256,address,uint256,uint256,uint256)",args:[2n,ben,10n,11n,950n*U],tx:"0x"+"62".repeat(32),ts:t-450},
+   {sig:"BidPlaced(uint256,address,uint256,uint256,uint256)",args:[0n,"0xA4A4000000000000000000000000000000004a4a",900n,2000n*U,4n],tx:"0x"+"63".repeat(32),ts:t-600},
+   {sig:"PayeeApproved(address)",args:["0x40501700000000000000000000000000000040a1"],tx:"0x"+"64".repeat(32),ts:t-1000},
+   {sig:"PayeeProposed(address,uint256,string)",args:["0x40501700000000000000000000000000000040a1",800n*U,"仁愛醫院"],tx:"0x"+"65".repeat(32),ts:t-1100},
+   {sig:"Funded(address,uint256)",args:[set,12000n*U],tx:"0x"+"56".repeat(32),ts:t-1300}]};
+}
+
+/* ---------- wallet ---------- */
+let injected=null;
+window.addEventListener("eip6963:announceProvider",e=>{const d=e.detail;if(!injected||/metamask/i.test(d.info.name))injected=d.provider;});
+window.dispatchEvent(new Event("eip6963:requestProvider"));
+async function connect(){
+ const eth=injected||window.ethereum;if(!eth){toast("找不到錢包，請安裝 MetaMask","bad");return;}
+ try{await eth.request({method:"eth_requestAccounts"});
+  try{await eth.request({method:"wallet_switchEthereumChain",params:[{chainId:CHAIN_HEX}]});}catch(e){if(e.code===4902)toast("MetaMask 沒有 Sepolia，請先加入","bad");}
+  wprov=new ethers.BrowserProvider(eth);const net=await wprov.getNetwork();if(net.chainId!==CHAIN_ID)toast("請切換到 Sepolia 測試網","bad");
+  signer=await wprov.getSigner();me=await signer.getAddress();
+  if(!eth._ftBound){eth._ftBound=true;
+   eth.on&&eth.on("accountsChanged",a=>{me=a[0]||null;signer=null;if(me)wprov.getSigner().then(async s=>{signer=s;await load();goRole();});else load();});
+   eth.on&&eth.on("chainChanged",()=>location.reload());}
+  await load();goRole();
+ }catch(e){toast(errMsg(e),"bad");}
+}
+function goRole(){const r=myRole();if(r&&["overview","settlor","beneficiary","buyer"].includes(page))nav(r);}
+
+/* ---------- tx ---------- */
+const tIface=new ethers.Interface(TRUST_ABI);
+function errMsg(e){if(!e)return"未知錯誤";if(e.code==="ACTION_REJECTED"||e.code===4001)return"你在錢包中取消了簽名";
+ let name=e.revert&&e.revert.name;if(!name){const d=e.data||(e.info&&e.info.error&&e.info.error.data)||(e.error&&e.error.data);
+  if(typeof d==="string"&&d.length>=10){try{name=tIface.parseError(d).name;}catch(x){try{name=cIface.parseError(d).name;}catch(y){}}}}
+ if(name)return(ZH[name]||ZH2[name]||"合約拒絕")+"（"+name+"）";if(/insufficient funds/i.test(e.message||""))return"錢包的 Sepolia ETH 不夠付 gas";
+ return(e.shortMessage||e.message||"交易失敗").slice(0,160);}
+async function send(key,fn,okMsg){
+ if(demo){toast("示範模式不送交易。到「設定」載入合約地址並連接錢包後即可操作。","info");return;}
+ if(!signer){toast("請先連接錢包","bad");return;}
+ busy[key]=true;render();
+ try{const c=new ethers.Contract(trustAddr,TRUST_ABI,signer);const tx=await fn(c);toast("已送出，等待上鏈…","info",tx.hash);await tx.wait();toast(okMsg,"ok",tx.hash);}
+ catch(e){console.error(e);toast(errMsg(e),"bad");}
+ busy[key]=false;await load();}
+function safeModal(safe,txs,title){
+ const bg=document.createElement("div");bg.className="modal-bg";
+ const link="https://app.safe.global/apps/open?safe=sep:"+safe+"&appUrl="+encodeURIComponent("https://apps-portal.safe.global/tx-builder");
+ bg.innerHTML='<div class="modal" role="dialog" aria-modal="true"><div class="between" style="margin-bottom:6px"><h2>透過家族多簽送出：'+esc(title)+'</h2><button class="btn ghost" data-x>關閉</button></div>'+
+  '<p class="note" style="margin:0 0 12px">這個角色是 Safe 多簽錢包（'+short(safe)+'，'+(S.benSafe&&same(safe,S.beneficiary)?S.benSafe.threshold+' / '+S.benSafe.owners.length:S.setSafe?S.setSafe.threshold+' / '+S.setSafe.owners.length:'')+'）。請在 Safe 的 Transaction Builder 建立下列交易，達到門檻人數簽名後才會執行。</p>'+
+  txs.map((t,i)=>'<div class="txbox"><b>交易 '+(i+1)+'：'+esc(t.label)+'</b><span class="note">　To</span><code>'+t.to+'</code><span class="note">Value</span><code>0</code><span class="note">Data</span><code>'+t.data+'</code><div class="row" style="margin-top:8px"><button class="btn" data-copy="'+t.to+'">複製 To</button><button class="btn" data-copy="'+t.data+'">複製 Data</button></div></div>').join("")+
+  '<ol class="note" style="margin:14px 0 0;padding-left:18px"><li>開啟 Safe → Transaction Builder，勾選「Custom data」</li><li>依序貼上 To、Value 0、Data，加入批次後 Create Batch</li><li>其他成員到 Safe 的佇列中確認簽名，達門檻後 Execute</li></ol>'+
+  '<div class="row" style="margin-top:16px;justify-content:flex-end"><a class="btn pri" href="'+link+'" target="_blank" rel="noopener">開啟 Safe</a></div></div>';
+ document.body.appendChild(bg);
+ bg.onclick=e=>{if(e.target===bg||e.target.hasAttribute("data-x"))bg.remove();const c=e.target.getAttribute&&e.target.getAttribute("data-copy");
+  if(c){try{navigator.clipboard.writeText(c).then(()=>{e.target.textContent="已複製";});}catch(x){e.target.textContent="請手動選取";}}};
+}
+async function ensureAllowance(amount){const erc=new ethers.Contract(S.token,ERC20_ABI,signer);const cur=await erc.allowance(me,trustAddr);if(cur>=amount)return;
+ toast("先授權 "+tok(amount)+" "+S.symbol+"（只授權這次需要的金額）","info");const tx=await erc.approve(trustAddr,amount);await tx.wait();}
+
+/* ---------- charts ---------- */
+const TIPS={};
+function showTip(html,e){const t=$("#tip");t.innerHTML=html;t.hidden=false;const w=t.offsetWidth,h=t.offsetHeight;
+ let x=e.clientX+14,y=e.clientY+14;if(x+w>innerWidth-8)x=e.clientX-w-14;if(y+h>innerHeight-8)y=e.clientY-h-14;t.style.left=x+"px";t.style.top=y+"px";}
+const hideTip=()=>{$("#tip").hidden=true;};
+function fitW(w){const avail=innerWidth-(innerWidth>960?300:70);return Math.round(Math.max(300,Math.min(w,avail)));}
+function niceMax(v){if(v<=0)return 1;const p=Math.pow(10,Math.floor(Math.log10(v))),m=v/p;return(m<=1?1:m<=2?2:m<=2.5?2.5:m<=5?5:10)*p;}
+function lineChart(id,series,o){
+ const W=fitW(o.w||720),H=o.h||240,L=52,R=16,T=14,B=28;
+ const xs=series.flatMap(s=>s.pts.map(p=>p[0])),ys=series.flatMap(s=>s.pts.map(p=>p[1]));
+ const x0=o.xmin!=null?o.xmin:Math.min(...xs),x1=o.xmax!=null?o.xmax:Math.max(...xs),y1=niceMax(Math.max(...ys,o.ymin||0)*1.05),y0=o.y0||0;
+ const X=v=>L+(v-x0)/(x1-x0||1)*(W-L-R),Y=v=>T+(1-(v-y0)/(y1-y0))*(H-T-B);
+ let g="";
+ for(let i=0;i<=4;i++){const v=y0+(y1-y0)*i/4;g+='<line class="gl" x1="'+L+'" x2="'+(W-R)+'" y1="'+Y(v)+'" y2="'+Y(v)+'"/><text x="'+(L-8)+'" y="'+(Y(v)+4)+'" text-anchor="end">'+o.yFmt(v)+'</text>';}
+ (o.xticks||[x0,x1]).forEach(v=>{g+='<text x="'+X(v)+'" y="'+(H-8)+'" text-anchor="middle">'+o.xFmt(v)+'</text>';});
+ if(o.band){g+='<rect x="'+X(o.band.x0)+'" y="'+T+'" width="'+Math.max(0,X(o.band.x1)-X(o.band.x0))+'" height="'+(H-T-B)+'" fill="var(--danger)" opacity=".08"/><text x="'+(X(o.band.x0)+6)+'" y="'+(T+14)+'" style="fill:var(--danger)">'+o.band.label+'</text>';}
+ if(o.vline){g+='<line x1="'+X(o.vline.x)+'" x2="'+X(o.vline.x)+'" y1="'+T+'" y2="'+(H-B)+'" stroke="var(--primary)" stroke-dasharray="3 3"/><text x="'+(X(o.vline.x)+5)+'" y="'+(T+10)+'" style="fill:var(--primary)">'+o.vline.label+'</text>';}
+ series.forEach(s=>{const d=s.pts.map((p,i)=>(i?"L":"M")+X(p[0]).toFixed(1)+" "+Y(p[1]).toFixed(1)).join("");
+  if(s.area)g+='<path d="'+d+'L'+X(s.pts[s.pts.length-1][0])+' '+Y(0)+'L'+X(s.pts[0][0])+' '+Y(0)+'Z" fill="'+s.color+'" opacity=".12"/>';
+  g+='<path d="'+d+'" fill="none" stroke="'+s.color+'" stroke-width="2" stroke-linejoin="round"'+(s.dash?' stroke-dasharray="5 4"':'')+'/>';
+  if(s.label){const lp=s.pts[s.pts.length-1];g+='<text x="'+(X(lp[0])-4)+'" y="'+(Y(lp[1])-8)+'" text-anchor="end" style="fill:var(--text)">'+esc(s.label)+'</text>';}});
+ (o.marks||[]).forEach(m=>{g+='<circle cx="'+X(m.x)+'" cy="'+Y(m.y)+'" r="5" fill="'+m.color+'" stroke="var(--surface)" stroke-width="2"/>';});
+ g+='<line id="'+id+'-cx" x1="0" x2="0" y1="'+T+'" y2="'+(H-B)+'" stroke="var(--muted)" stroke-width="1" visibility="hidden"/>';
+ series.forEach((s,i)=>{g+='<circle id="'+id+'-d'+i+'" r="4" fill="'+s.color+'" stroke="var(--surface)" stroke-width="2" visibility="hidden"/>';});
+ g+='<rect class="hit" x="'+L+'" y="'+T+'" width="'+(W-L-R)+'" height="'+(H-T-B)+'"/>';
+ TIPS[id]={kind:"line",series,o,X,Y,x0,x1,L,R,W};
+ return '<div class="chart" data-chart="'+id+'"><svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="'+esc(o.aria||"")+'">'+g+'</svg></div>';
+}
+function barChart(id,bars,o){
+ const W=fitW(o.w||1100),H=o.h||200,L=52,R=16,T=14,B=28,n=bars.length,y1=niceMax(Math.max(...bars.map(b=>b.v),1)*1.05);
+ const bw=(W-L-R)/n,X=i=>L+i*bw,Y=v=>T+(1-v/y1)*(H-T-B);
+ let g='<defs><pattern id="'+id+'-h" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" fill="var(--surface)"/><line x1="0" y1="0" x2="0" y2="6" stroke="currentColor" stroke-width="1.5" opacity=".55"/></pattern></defs>';
+ for(let i=0;i<=4;i++){const v=y1*i/4;g+='<line class="gl" x1="'+L+'" x2="'+(W-R)+'" y1="'+Y(v)+'" y2="'+Y(v)+'"/><text x="'+(L-8)+'" y="'+(Y(v)+4)+'" text-anchor="end">'+o.yFmt(v)+'</text>';}
+ bars.forEach((b,i)=>{const x=X(i)+1,w=Math.max(2,bw-2),y=Y(b.v),h=Y(0)-y,r=Math.min(4,h,w/2);
+  g+='<path d="M'+x+' '+Y(0)+'V'+(y+r)+'q0 -'+r+' '+r+' -'+r+'h'+(w-2*r)+'q'+r+' 0 '+r+' '+r+'V'+Y(0)+'Z" fill="'+(b.hatch?'url(#'+id+'-h)':b.color)+'" style="color:'+b.color+'"'+(b.hatch?' stroke="'+b.color+'" stroke-width="1" stroke-opacity=".6"':'')+'/>';
+  if(b.label!=null&&(n<=12||i%(W<600?4:2)===0))g+='<text x="'+(x+w/2)+'" y="'+(H-8)+'" text-anchor="middle">'+b.label+'</text>';
+  g+='<rect class="hit" data-i="'+i+'" x="'+X(i)+'" y="'+T+'" width="'+bw+'" height="'+(H-T-B)+'"/>';});
+ if(o.vline!=null){const x=X(o.vline);g+='<line x1="'+x+'" x2="'+x+'" y1="'+T+'" y2="'+(H-B)+'" stroke="var(--primary)" stroke-dasharray="3 3"/><text x="'+(x+5)+'" y="'+(T+10)+'" style="fill:var(--primary)">現在</text>';}
+ TIPS[id]={kind:"bar",bars};
+ return '<div class="chart" data-chart="'+id+'"><svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="'+esc(o.aria||"")+'">'+g+'</svg></div>';
+}
+function hbars(rows,fmt){const m=Math.max(...rows.map(r=>r.v),1);
+ return '<div style="display:flex;flex-direction:column;gap:12px">'+rows.map(r=>'<div><div class="between" style="font-size:13px;margin-bottom:4px"><span class="row" style="gap:6px"><span class="dot" style="background:'+r.color+'"></span>'+esc(r.label)+'</span><span class="num">'+fmt(r.v)+'</span></div><div class="meter" style="height:6px"><i style="width:'+(r.v/m*100)+'%;background:'+r.color+'"></i></div></div>').join("")+'</div>';}
+function bindCharts(){
+ document.querySelectorAll("[data-chart]").forEach(el=>{const id=el.dataset.chart,C=TIPS[id];if(!C)return;const svg=el.querySelector("svg");
+  if(C.kind==="bar"){svg.querySelectorAll(".hit").forEach(h=>{h.onmousemove=e=>showTip(C.bars[+h.dataset.i].tip,e);h.onmouseleave=hideTip;});return;}
+  const hit=svg.querySelector(".hit"),cx=svg.querySelector("#"+id+"-cx");
+  hit.onmousemove=e=>{const r=svg.getBoundingClientRect(),vx=(e.clientX-r.left)/r.width*C.W,xv=C.x0+(vx-C.L)/(C.W-C.L-C.R)*(C.x1-C.x0);
+   const p0=C.series[0].pts;let best=0;p0.forEach((p,i)=>{if(Math.abs(p[0]-xv)<Math.abs(p0[best][0]-xv))best=i;});
+   const xx=p0[best][0];cx.setAttribute("x1",C.X(xx));cx.setAttribute("x2",C.X(xx));cx.setAttribute("visibility","visible");
+   let rows="";C.series.forEach((s,i)=>{const p=s.pts.find(q=>q[0]===xx)||s.pts[Math.min(best,s.pts.length-1)];const d=svg.querySelector("#"+id+"-d"+i);
+    d.setAttribute("cx",C.X(p[0]));d.setAttribute("cy",C.Y(p[1]));d.setAttribute("visibility","visible");
+    rows+='<div class="r"><span><i style="background:'+s.color+'"></i>'+esc(s.name)+'</span><span>'+C.o.tFmt(p[1])+'</span></div>';});
+   showTip('<div class="t">'+C.o.tTitle(xx)+'</div>'+rows,e);};
+  hit.onmouseleave=()=>{hideTip();cx.setAttribute("visibility","hidden");C.series.forEach((s,i)=>svg.querySelector("#"+id+"-d"+i).setAttribute("visibility","hidden"));};
+ });
+}
+
+/* ---------- chrome ---------- */
+function nav(p){page=p;const u=new URL(location.href);u.hash=p;history.replaceState(null,"",u);$("#app").classList.remove("open");render();window.scrollTo(0,0);}
+function renderChrome(){
+ const r=myRole();
+ $("#nav").innerHTML=PAGES.map(p=>p.g?'<div class="nav-g">'+p.g+'</div>':'<a href="#'+p.id+'" data-nav="'+p.id+'"'+(page===p.id?' aria-current="page"':'')+'>'+ico(p.i)+p.n+
+  (p.role&&r===p.role?'<span class="tag">你</span>':'')+(p.id==="market"&&S?'<span class="cnt">'+S.listings.filter(l=>l.active).length+'</span>':'')+(p.id==="ledger"&&S&&S.events.length?'<span class="cnt">'+S.events.length+'</span>':'')+'</a>').join("");
+ document.querySelectorAll("[data-nav]").forEach(a=>a.onclick=e=>{e.preventDefault();nav(a.dataset.nav);});
+ $("#tsAddr").textContent=demo?"示範信託":S?short(S.addr):"尚未載入";
+ $("#tsSub").textContent=demo?"Demo · 不送交易":S?"Sepolia · "+S.total+" 期 × "+tok(S.amount,0):"點此設定合約地址";
+ $("#walletBox").innerHTML=me?'<span class="avatar"></span><div><b>'+short(me)+'</b><span>'+(r?ROLE_N[r]+((r==="beneficiary"&&isOwner(S.benSafe,me))||(r==="settlor"&&isOwner(S.setSafe,me))?"（多簽成員）":""):"已連接")+(S&&S.myBal!=null?" · "+tok(S.myBal,0)+" "+S.symbol:"")+'</span></div>':
+  '<span class="note">'+(demo?"示範模式：「承購人」頁以示範承購人身分顯示":"連接錢包後，會依地址帶你到自己的工作台")+'</span>';
+ const pg=PAGES.find(x=>x.id===page)||PAGES[1];
+ $("#crumb").innerHTML='<span>'+(demo?"示範信託":S?short(S.addr):"FamilyTrust")+'</span><span>/</span><b>'+pg.n+'</b>';
+ const sp=$("#statusPill");
+ if(loading){sp.className="pill";sp.innerHTML="<i></i>讀取中";}
+ else if(!S){sp.className="pill";sp.innerHTML="<i></i>未載入";}
+ else{const D=derive();sp.className="pill "+(D.paused?"p-bad":!D.fullyFunded?"p-warn":"p-ok");sp.innerHTML="<i></i>"+(D.paused?"暫停中":!D.fullyFunded?"未存足":"運作中");}
+ $("#connectBtn").textContent=me?short(me):"連接錢包";
+}
+
+/* ---------- shared pieces ---------- */
+function kpi(l,v,n,bar){return'<div class="kpi" style="--bar:'+(bar||"var(--border)")+'"><span class="eyebrow">'+l+'</span><b>'+v+'</b><span class="note">'+n+'</span></div>';}
+function ph(title,sub,right){return'<div class="ph"><div><h1>'+title+'</h1><p class="sub">'+sub+'</p></div><div class="row">'+(right||"")+'</div></div>';}
+function roleNote(r){const mr=myRole();if(demo)return'<span class="pill p-warn"><i></i>示範：按鈕不送交易</span>';if(!me)return'<span class="pill"><i></i>未連接錢包 · 唯讀</span>';
+ if(!ROLE_N[r])return'<span class="pill p-ok"><i></i>你是'+ROLE_N[mr]+'</span>';
+ return mr===r?'<span class="pill p-ok"><i></i>你是'+ROLE_N[r]+'</span>':'<span class="pill"><i></i>你不是'+ROLE_N[r]+' · 唯讀</span>';}
+const canAct=r=>demo||myRole()===r;
+function B(key,label,cls,attrs,role){const dis=busy[key]||(role&&!canAct(role));return'<button class="btn '+(cls||"")+'" data-act="'+key+'" '+(attrs||"")+(dis?" disabled":"")+'>'+(busy[key]?"處理中…":label)+'</button>';}
+const ST_N={claimed:"已領",due:"到期可領",dueNF:"到期・待存入",future:"受益人持有",listed:"掛單中",sold:"已售承購人"};
+function periodGrid(D,hl){
+ return'<div class="periods" id="pgrid">'+D.periods.map(p=>{const mine=hl&&same(p.owner,hl)&&!p.claimed,blk=p.st==="due"&&D.paused&&p.ben;
+  return'<div class="cell s-'+p.st+(blk?" blk":"")+(mine?" mine":"")+'" data-p="'+p.i+'">'+p.i+'</div>';}).join("")+'</div>'+
+ '<div class="legend"><span><i class="s-claimed"></i>已領</span>'+(D.payable?'<span><i class="s-due"></i>到期可領</span>':'<span><i class="s-dueNF"></i>到期・待存入</span>')+'<span><i class="s-future"></i>受益人持有</span><span><i class="s-listed"></i>掛單中</span><span><i class="s-sold"></i>已售承購人</span>'+(hl?'<span><i style="box-shadow:inset 0 0 0 2px var(--text)"></i>你的期數</span>':'')+'</div>';}
+function evDesc(e){const a=e.args;if(!a)return"";try{switch(e.sig.split("(")[0]){
+ case"Funded":return who(a[0])+" 存入 "+tok(a[1])+" "+S.symbol;case"Claimed":return who(a[0])+" 領取 "+a[1]+" 期，"+tok(a[2])+" "+S.symbol;
+ case"Listed":return"#"+a[0]+" "+who(a[1])+" 掛第 "+a[2]+"–"+a[3]+" 期，售價 "+tok(a[4]);
+ case"BidPlaced":return"#"+a[0]+" "+who(a[1])+" 以 "+pct(a[2])+" 收購，預算 "+tok(a[3])+"、最多 "+a[4]+" 期";case"BidCancelled":return"#"+a[0]+" 退回 "+tok(a[1]);
+ case"BidFilled":return"#"+a[0]+" "+who(a[1])+" 賣出第 "+a[2]+"–"+a[3]+" 期，"+tok(a[4]);case"PeriodsTransferred":return who(a[0])+" → "+who(a[1])+" 第 "+a[2]+"–"+a[3]+" 期";
+ case"PayeeProposed":return payeeName(a[0])+"，上限 "+(a[1]>0n?tok(a[1],0):"不限");case"PayeeApproved":return payeeName(a[0]);case"PayeeRemoved":return payeeName(a[0])+"（"+who(a[1])+"）";
+ case"Paid":return"付給 "+payeeName(a[0])+" "+tok(a[1])+" "+S.symbol+"（"+(a[2]?"信託直付":"錢包")+"）"+(a[3]?"："+a[3]:"");case"ListingCancelled":return"#"+a[0];
+ case"PeriodsSold":return"#"+a[0]+" 由 "+short(a[1])+" 以 "+tok(a[2])+" 承購";case"Paused":return"至 "+hm(Number(a[1]));}}catch(x){}return"";}
+function eventsList(limit){
+ if(!S.evLoaded)return'<div class="empty">讀取鏈上事件中…</div>';
+ if(!S.events.length)return'<div class="empty">最近 9000 個區塊沒有事件</div>';
+ return'<ul class="ev">'+S.events.slice(0,limit||999).map(e=>{const m=EVENTS[e.sig];
+  return'<li><span class="dot" style="background:'+m.c+'"></span><span><b>'+m.n+'</b> <span class="note">'+esc(evDesc(e))+'</span></span><span class="addr">'+(e.ts?tm(e.ts)+" ":"")+'<a href="'+SCAN+'/tx/'+e.tx+'" target="_blank" rel="noopener">↗</a></span></li>';}).join("")+'</ul>';}
+function listingTable(D,mode){
+ const rows=S.listings.slice().reverse().filter(l=>mode==="market"?l.active:mode==="mine"?same(l.seller,S.beneficiary):true);
+ if(!rows.length)return'<div class="empty">'+(mode==="market"?"目前沒有可承購的掛單":"還沒有掛單")+'</div>';
+ return'<div class="tbl"><table><thead><tr><th>#</th><th>期數</th><th class="r">面額</th><th class="r">售價</th><th class="r">折價</th><th class="r">隱含年化</th><th>第一期到期</th><th>賣方</th><th>狀態</th>'+(mode==="all"?"":"<th></th>")+'</tr></thead><tbody>'+
+ rows.map(l=>{const n=l.toId-l.fromId+1,face=S.amount*BigInt(n),firstAt=S.start+(l.fromId+1)*S.interval,expired=l.active&&l.fromId<D.due;
+  const st=l.active?(expired?'<span class="pill p-bad"><i></i>已過期</span>':'<span class="pill p-warn"><i></i>掛單中</span>'):(l.buyer&&l.buyer!==ethers.ZeroAddress?'<span class="pill p-s2"><i></i>已售 '+short(l.buyer)+'</span>':'<span class="pill"><i></i>已取消</span>');
+  let act="";if(mode==="market")act=expired?'<span class="note">已到期，無法承購</span>':'<button class="btn pri" data-act="buy:'+l.id+'" data-id="'+l.id+'"'+(busy["buy:"+l.id]?" disabled":"")+'>'+(busy["buy:"+l.id]?"處理中…":"承購")+'</button>'+(l.fromId-D.due<=1?'<div class="note" style="color:var(--warning);margin-top:4px">第一期 <span data-cd="'+firstAt+'">'+dur(firstAt-D.t)+'</span> 後到期</div>':'');if(mode==="mine"&&l.active)act=B("cancel:"+l.id,"取消","",'data-id="'+l.id+'"',"beneficiary");
+  return'<tr><td class="num">'+l.id+'</td><td class="num">'+l.fromId+'–'+l.toId+' <span class="note">'+n+' 期</span></td><td class="r num">'+tok(face)+'</td><td class="r num">'+tok(l.price)+'</td><td class="r num">'+pct(l.disc)+'</td><td class="r num">'+(l.active&&!expired?pct(l.apr):"—")+'</td><td class="num">'+tm(firstAt)+'</td><td class="note">'+esc(who(l.seller))+'</td><td>'+st+'</td>'+(mode==="all"?"":'<td class="r">'+act+'</td>')+'</tr>';}).join("")+'</tbody></table></div>';}
+function ownershipBar(D){
+ const parts=[["已領",D.n.claimed,"var(--faint)"],D.payable?["到期可領",D.n.due,"var(--success)"]:["到期・待存入",D.n.due,"var(--danger)"],["受益人持有",D.n.future,"var(--s1)"],["掛單中",D.n.listed,"var(--warning)"],["已售承購人",D.n.sold,"var(--s2)"]].filter(p=>p[1]>0);
+ return'<div class="stackbar">'+parts.map(p=>'<i style="flex:'+p[1]+';background:'+p[2]+'" title="'+p[0]+' '+p[1]+'"></i>').join("")+'</div><div class="legend" style="margin-top:0">'+parts.map(p=>'<span><i style="background:'+p[2]+'"></i>'+p[0]+' <b class="num" style="color:var(--text)">'+p[1]+'</b></span>').join("")+'</div>';}
+function cumSeries(D){
+ const ben=[[0,0]],buy=[[0,0]];let b=0,y=0;const A=tokN(S.amount);
+ D.periods.forEach(p=>{if(p.ben)b+=A;else y+=A;ben.push([p.i+1,b]);buy.push([p.i+1,y]);});
+ return{ben,buy};}
+const xt=()=>[0,6,12,18,24].filter(v=>v<=S.total);
+
+/* ---------- pages ---------- */
+function vOverview(D){
+ const covBar=S.cov>=10000?"var(--success)":S.cov>=8000?"var(--warning)":"var(--danger)",cs=cumSeries(D),A=tokN(S.amount);
+ const paid=D.n.claimed*A,sched=D.due*A;
+ return ph("總覽","這個信託現在的健康狀況：資金是否足額、每一期歸誰、錢什麼時候流出去。任何人都能看。",roleNote("overview"))+
+ '<div class="kpis">'+
+  kpi("資金池",tok(S.balance,0)+'<small>'+S.symbol+'</small>',"信託合約持有",covBar)+
+  kpi("擔保率",pct(S.cov),D.fullyFunded?"餘額 ≥ 未付總額":"未存足",covBar)+
+  kpi("已撥 / 應撥",fnum(paid,0)+'<small>/ '+fnum(sched,0)+'</small>',D.n.due?D.n.due+" 期到期未領":"沒有積欠","var(--s1)")+
+  kpi("下一期",D.next?'<span data-cd="'+D.next.at+'">'+dur(D.next.at-D.t)+'</span>':"—",D.next?"第 "+D.next.i+" 期 · "+tm(D.next.at):"已全部到期","var(--primary)")+
+  kpi("已售期數",D.soldTotal+'<small>/ '+S.total+'</small>',D.deals.length+" 筆成交 · "+D.n.listed+" 期掛單中","var(--s2)")+
+  kpi("暫停",D.paused?"暫停中":"正常","剩餘額度 "+D.pauseLeft+" / "+S.pauseBudget+" 期",D.paused?"var(--danger)":"var(--success)")+
+  kpi("做市報價",S.bids.filter(b=>b.active).length+'<small>張</small>',"託管 "+tok(S.bidEscrow,0)+" "+S.symbol,"var(--s1)")+
+  kpi("收款方",S.payees.filter(p=>p.approved&&!p.removed).length+'<small>個核可</small>',S.events.filter(e=>e.sig.startsWith("Paid(")).length+" 筆付款","var(--success)")+
+ '</div>'+
+ '<div class="g g-21"><div class="card"><div class="card-h"><div><h2>撥款排程（累計）</h2><p class="note">依目前每一期的擁有者計算</p></div>'+
+   '<div class="legend" style="margin:0"><span><i class="ln" style="background:var(--s1)"></i>付給受益人</span><span><i class="ln" style="background:var(--s2)"></i>付給承購人</span></div></div>'+
+   lineChart("cum",[{name:"受益人",color:"var(--s1)",pts:cs.ben,area:true},{name:"承購人",color:"var(--s2)",pts:cs.buy,area:true}],
+    {xmin:0,xmax:S.total,xticks:xt(),xFmt:v=>"第"+v+"期",yFmt:v=>fnum(v,0),tFmt:v=>fnum(v,0)+" "+S.symbol,tTitle:v=>"第 "+v+" 期結束時",vline:{x:nowX(D),label:"現在"},aria:"累計撥款排程",w:760})+
+  '</div><div class="card"><div class="card-h"><h2>受益權分布</h2><span class="note">'+S.total+' 期</span></div>'+ownershipBar(D)+
+   '<dl class="kv" style="margin-top:18px"><dt>未付總額</dt><dd>'+tok(S.unpaid,0)+'</dd><dt>其中屬承購人</dt><dd>'+fnum(D.soldUnclaimed*A,0)+'</dd><dt>每期</dt><dd>'+tok(S.amount,0)+' '+S.symbol+'</dd><dt>間隔</dt><dd>'+dur(S.interval)+'</dd><dt>年化上限</dt><dd>'+pct(S.maxApr)+'</dd></dl></div></div>'+
+ '<div class="card" style="margin-bottom:16px"><div class="card-h"><h2>每期狀態</h2><span class="note">滑鼠移到格子上看到期時間與擁有者</span></div>'+periodGrid(D)+'</div>'+
+ '<div class="g g-12"><div class="card"><div class="card-h"><h2>最新動態</h2><a href="#ledger" data-go="ledger" class="note">看全部 →</a></div>'+eventsList(6)+'</div>'+
+  '<div class="card"><div class="card-h"><h2>承購掛單</h2><a href="#market" data-go="market" class="note">前往市場 →</a></div>'+listingTable(D,"all")+'</div></div>';
+}
+function vSettlor(D){
+ const need=S.unpaid>S.balance?S.unpaid-S.balance:0n,fundPct=S.unpaid>0n?Math.min(100,Number(S.balance*10000n/S.unpaid)/100):100;
+ return ph("出資人","存入資金，並在必要時有限度地暫停受益人撥款。信託不可撤銷，存入後不能取回。",roleNote("settlor"))+
+ '<div class="kpis">'+kpi("存入進度",fnum(fundPct,1)+"%","已存 "+tok(S.balance,0)+" / "+tok(S.unpaid,0),fundPct>=100?"var(--success)":"var(--warning)")+
+  kpi("已撥給受益人",D.periods.filter(p=>p.claimed&&p.ben).length+'<small>期</small>',"已到期 "+D.due+" 期","var(--s1)")+
+  kpi("已售承購人",D.soldTotal+'<small>期</small>',"暫停影響不到","var(--s2)")+
+  kpi("暫停額度",D.pauseLeft+'<small>/ '+S.pauseBudget+' 期</small>',"單次最多 "+S.maxPause+" 期",D.paused?"var(--danger)":"var(--border)")+'</div>'+
+ '<div class="g g-21"><div class="stack">'+
+  '<div class="card"><div class="card-h"><h2>存入資金</h2><span class="num">'+fnum(fundPct,1)+'%</span></div><div class="meter"><i style="width:'+fundPct+'%"></i></div>'+
+   '<div class="between note" style="margin:8px 0 14px"><span>已存 '+tok(S.balance,0)+' '+S.symbol+'</span><span>還需 '+tok(need,0)+'</span></div>'+
+   '<div class="form"><div class="f"><label for="fundAmt">金額（顆）</label><input id="fundAmt" type="number" min="1" value="'+(need>0n?Math.ceil(tokN(need)):"")+'" placeholder="0"></div>'+B("fund","存入","pri","","settlor")+'</div>'+
+   '<p class="note" style="margin:10px 0 0">會先檢查授權，不夠才 approve 剛好的金額，再呼叫 <span class="mono">fund</span>。超過未付總額會被擋下（OverFunded）。</p></div>'+
+  '<div class="card"><div class="card-h"><h2>暫停受益人撥款</h2>'+(D.paused?'<span class="pill p-bad"><i></i>暫停中</span>':'<span class="pill p-ok"><i></i>正常</span>')+'</div>'+
+   (D.paused?'<div class="hero" style="margin-bottom:14px"><span class="eyebrow">自動恢復倒數</span><span class="big" data-cd="'+S.pausedUntil+'">'+dur(S.pausedUntil-D.t)+'</span></div>':'')+
+   '<div class="between note" style="margin-bottom:6px"><span>累計額度已用 '+S.pauseUsed+' / '+S.pauseBudget+' 期</span><span>剩 '+D.pauseLeft+' 期</span></div>'+
+   '<div class="meter" style="margin-bottom:14px"><i style="width:'+(S.pauseBudget?S.pauseUsed/S.pauseBudget*100:0)+'%;background:var(--danger)"></i></div>'+
+   '<div class="form"><div class="f"><label for="pauseN">暫停幾期（單次最多 '+S.maxPause+'）</label><input id="pauseN" type="number" min="1" max="'+S.maxPause+'" value="1"></div>'+
+   (D.paused?B("unpause","提早恢復","","","settlor"):B("pause","暫停","dng","","settlor"))+'</div>'+
+   '<p class="note" style="margin:10px 0 0">只凍結受益人自己的期數，承購人的期數照常；恢復後受益人可補領，不會被沒收。提早恢復不退額度。</p></div>'+
+ '</div><div class="stack">'+multisigCard(S.setSafe,"出資人")+recordsTeaser()+'<div class="card"><h2 style="margin-bottom:4px">受益權分布</h2>'+ownershipBar(D)+'</div>'+
+  '<div class="card"><h2 style="margin-bottom:10px">出資人不能做的事</h2><ul class="plain"><li>取回已存入的資金</li><li>承購受益人的期數（SettlorCannotBuy）</li><li>無限期暫停：單次與累計都有上限</li><li>暫停承購人已買下的期數</li></ul></div></div></div>';
+}
+function vBeneficiary(D){
+ const amt=S.amount*BigInt(D.benDue),A=tokN(S.amount),nextMine=D.periods.find(p=>!p.due&&p.ben),benClaimed=D.periods.filter(p=>p.claimed&&p.ben).length;
+ const firstSell=D.periods.find(p=>p.st==="future"&&p.i>=D.due+2)||D.periods.find(p=>p.st==="future"),f0=firstSell?firstSell.i:D.due,t0=Math.min(S.total-1,f0+2);
+ return ph("受益人","領取到期撥款；需要提前用錢時，把未來的期數折價賣給承購人。",(S.benSafe?msPill(S.benSafe):"")+roleNote("beneficiary"))+
+ '<div class="card" style="margin-bottom:16px"><div class="between" style="gap:20px"><div class="hero"><span class="eyebrow">現在可領</span><span class="big">'+tok(amt,0)+'<small>'+S.symbol+'</small></span><span class="note">'+D.benDue+' 期到期未領'+(D.paused?' · <span style="color:var(--danger)">暫停中，恢復後可補領</span>':'')+'</span></div>'+
+  '<div class="row" style="gap:24px">'+(nextMine?'<div class="hero"><span class="eyebrow">下一筆</span><span class="num" style="font-size:22px;font-weight:600" data-cd="'+nextMine.dueAt+'">'+dur(nextMine.dueAt-D.t)+'</span><span class="note">第 '+nextMine.i+' 期 · '+tok(S.amount,0)+'</span></div>':'')+B("claim","領取","pri lg","","beneficiary")+'</div></div></div>'+
+ '<div class="kpis">'+kpi("已領",fnum(benClaimed*A,0)+'<small>'+S.symbol+'</small>',benClaimed+" 期","var(--faint)")+
+  kpi("未來可領",fnum(D.n.future*A,0)+'<small>'+S.symbol+'</small>',D.n.future+" 期仍屬於你","var(--s1)")+
+  kpi("掛單中",D.n.listed+'<small>期</small>',S.listings.filter(l=>l.active).length+" 張掛單","var(--warning)")+
+  kpi("已提前變現",tok(D.deals.reduce((s,l)=>s+l.price,0n),0)+'<small>'+S.symbol+'</small>',D.soldTotal+" 期已售","var(--s2)")+'</div>'+
+ '<div class="g g-21"><div class="stack">'+
+  '<div class="card"><div class="card-h"><h2>出售未來期數</h2><span class="note">提前變現</span></div>'+
+   '<div class="form"><div class="f"><label for="lsFrom">從第幾期</label><input id="lsFrom" type="number" min="'+D.due+'" max="'+(S.total-1)+'" value="'+f0+'"></div>'+
+   '<div class="f"><label for="lsTo">到第幾期</label><input id="lsTo" type="number" min="'+D.due+'" max="'+(S.total-1)+'" value="'+t0+'"></div>'+
+   '<div class="f"><label for="lsPrice">售價（顆）</label><input id="lsPrice" type="number" min="1" placeholder="參考下方"></div>'+B("list","掛單","pri","","beneficiary")+'</div>'+
+   '<div class="quote" id="quoteBox" style="margin-top:12px"><div><small>面額</small><b>—</b></div><div><small>合理價（8%）</small><b>—</b></div><div><small>最低價（'+pct(S.maxApr)+'）</small><b>—</b></div></div>'+
+   '<p class="note" style="margin:10px 0 0">售價要介於最低價與面額之間。建議至少往後留 2 期，避免成交前就到期。</p></div>'+
+  '<div class="card"><div class="card-h"><h2>我的掛單</h2></div>'+listingTable(D,"mine")+'</div></div>'+
+ '<div class="stack">'+multisigCard(S.benSafe,"受益人")+sharingCard(D)+'<div class="card side-grid"><div class="card-h"><h2>我的期數</h2></div>'+periodGrid(D,S.beneficiary)+'</div>'+
+  '<div class="card"><h2 style="margin-bottom:10px">保護你的規則</h2><ul class="plain"><li>售價不得低於以 '+pct(S.maxApr)+' 年化折現的價格</li><li>出資人不能承購你的期數</li><li>暫停只延後、不沒收，有次數與總量上限</li></ul></div></div></div>';
+}
+function vBuyer(D){
+ const addr=buyerAddr(),A=tokN(S.amount),mine=addr?D.periods.filter(p=>same(p.owner,addr)&&!p.ben):[],pending=mine.filter(p=>!p.claimed),myDue=mine.filter(p=>p.due&&!p.claimed).length;
+ const myDeals=addr?D.deals.filter(l=>same(l.buyer,addr)):[],cost=myDeals.reduce((s,l)=>s+tokN(l.price),0),face=myDeals.reduce((s,l)=>s+(l.toId-l.fromId+1)*A,0);
+ const received=mine.filter(p=>p.claimed).length*A;
+ let cf="";
+ if(mine.length){const firstBuy=Math.max(0,Math.min(...mine.map(p=>p.i))-3);const pts=[[0,0],[firstBuy,0],[firstBuy+0.01,-cost]];let c=-cost;
+  mine.slice().sort((a,b)=>a.i-b.i).forEach(p=>{pts.push([p.i+1-0.01,c]);c+=A;pts.push([p.i+1,c]);});pts.push([S.total,c]);
+  const off=cost;
+  cf=lineChart("roi",[{name:"淨現金流",color:"var(--s2)",pts:pts.map(p=>[p[0],p[1]+off]),label:"淨賺 "+fnum(c,0)}],{xmin:0,xmax:S.total,xticks:xt(),xFmt:v=>"第"+v+"期",
+   yFmt:v=>fnum(v-off,0),tFmt:v=>fnum(v-off,0)+" "+S.symbol,tTitle:v=>"第 "+Math.round(v)+" 期",h:210,w:760,aria:"承購人淨現金流",vline:{x:nowX(D),label:"現在"}});}
+ return ph("承購人","以折價買下受益人的未來期數，到期由信託直接付款給你。出資人暫停不影響你的期數。",roleNote("buyer"))+
+ (!demo&&me&&myRole()!=="buyer"?'<div class="banner warn"><b>目前是'+ROLE_N[myRole()]+'錢包</b>'+ROLE_N[myRole()]+'不能承購。請在 MetaMask 切換到另一個帳戶（不是出資人、也不是受益人），頁面會自動更新。</div>':'')+
+ (!demo&&!me?'<div class="banner info"><b>還沒連接錢包</b>按右上角「連接錢包」，用承購人的帳戶連接後才能承購。</div>':'')+
+ '<div class="kpis">'+kpi("投入成本",fnum(cost,0)+'<small>'+S.symbol+'</small>',myDeals.length+" 筆承購","var(--s2)")+
+  kpi("到期面額",fnum(face,0)+'<small>'+S.symbol+'</small>',"預期收益 "+fnum(face-cost,0),"var(--success)")+
+  kpi("已收回",fnum(received,0)+'<small>'+S.symbol+'</small>',mine.filter(p=>p.claimed).length+" / "+mine.length+" 期","var(--s1)")+
+  kpi("現在可領",fnum(myDue*A,0)+'<small>'+S.symbol+'</small>',myDue+" 期已到期","var(--success)")+'</div>'+
+ '<div class="g g-21"><div class="card"><div class="card-h"><div><h2>我的淨現金流</h2><p class="note">承購時付出售價（向下），之後每期到期收回 '+tok(S.amount,0)+'（向上），0 線以上就是獲利</p></div></div>'+(cf||'<div class="empty">'+(addr?"你還沒有承購任何期數，到「承購市場與定價」挑一張":"連接承購人錢包後顯示")+'</div>')+'</div>'+
+  '<div class="card"><div class="card-h"><h2>我的期數</h2>'+B("claimBuyer","領取到期款","pri","","buyer")+'</div>'+
+   (pending.length?'<div class="tbl"><table><thead><tr><th>期</th><th>到期</th><th class="r">金額</th><th>狀態</th></tr></thead><tbody>'+pending.map(p=>'<tr><td class="num">#'+p.i+'</td><td class="num">'+tm(p.dueAt)+'</td><td class="r num">'+tok(S.amount,0)+'</td><td>'+(p.due?'<span class="pill p-ok"><i></i>可領</span>':'<span class="pill"><i></i><span data-cd="'+p.dueAt+'">'+dur(p.dueAt-D.t)+'</span></span>')+'</td></tr>').join("")+'</tbody></table></div>':'<div class="empty">沒有待收期數</div>')+'</div></div>'+
+ '<div class="card"><div class="card-h"><h2>可承購的掛單</h2><a href="#market" data-go="market" class="note">看定價分析 →</a></div>'+listingTable(D,"market")+'</div>';
+}
+const msPill=sf=>'<span class="pill p-pri"><i></i>家族多簽 '+sf.threshold+' / '+sf.owners.length+'</span>';
+function multisigCard(sf,who_){
+ if(!sf)return"";
+ return'<div class="card"><div class="card-h"><h2>家族多簽</h2>'+msPill(sf)+'</div><p class="note" style="margin:0 0 10px">'+who_+'是 Safe 多簽錢包，任何動作都需要 '+sf.threshold+' 位成員簽名。在這裡按按鈕會產生交易資料，到 Safe 建立並收集簽名。</p>'+
+  '<ul class="ev">'+sf.owners.map((o,i)=>'<li><span class="avatar" style="width:20px;height:20px"></span><span class="mono" style="font-size:12px">'+short(o)+(same(o,me)?' <span class="pill p-ok" style="margin-left:6px"><i></i>你</span>':'')+'</span><span class="note">成員 '+(i+1)+'</span></li>').join("")+'</ul></div>';}
+function scopeChips(sc){return SCOPES.filter(s=>sc&s[0]).map(s=>'<span class="pill p-pri"><i></i>'+s[1]+'</span>').join(" ")||'<span class="note">—</span>';}
+function sharingCard(D){
+ const c=S.consent,on=c&&c.expiry>D.t&&c.scopes>0;
+ const head='<div class="card-h"><h2>資料分享</h2>'+(on?'<span class="pill p-ok"><i></i>已同意</span>':'<span class="pill"><i></i>未同意</span>')+'</div>';
+ if(!consentAddr&&!demo)return'<div class="card">'+head+'<p class="note" style="margin:0">尚未設定 RecordConsent 合約。到「設定」填入地址後，你可以選擇讓出資人查看你的支付、質押、借貸紀錄。</p></div>';
+ return'<div class="card">'+head+
+  '<p class="note" style="margin:0 0 12px">'+(on?'出資人可以查看：':'選擇要讓<b style="color:var(--text)">出資人</b>查看的紀錄。你可以隨時撤回，每次授權與撤回都會留下鏈上紀錄。')+'</p>'+
+  (on?'<div class="row" style="margin-bottom:8px">'+scopeChips(c.scopes)+'</div><p class="note" style="margin:0 0 12px">到期：'+hm(c.expiry)+'（'+dur(c.expiry-D.t)+' 後）</p>':'')+
+  '<div class="row" style="margin-bottom:10px">'+SCOPES.map(s=>'<label class="chk"><input type="checkbox" data-scope="'+s[0]+'"'+(on&&(c.scopes&s[0])?" checked":(!on&&s[0]===1?" checked":""))+'>'+s[1]+'</label>').join("")+'</div>'+
+  '<div class="form" style="grid-template-columns:1fr auto auto"><div class="f"><label for="cDays">有效期間</label><select id="cDays"><option value="1">1 天</option><option value="7" selected>7 天</option><option value="30">30 天</option><option value="90">90 天</option></select></div>'+
+  B("grant",on?"更新同意":"開啟同意","pri","","beneficiary")+(on?B("revoke","撤回","dng","","beneficiary"):"")+'</div>'+
+  '<p class="note" style="margin:10px 0 0">提醒：鏈上交易本身是公開的。這份同意決定的是本系統是否替出資人整理、顯示，並留下可稽核的授權紀錄。</p></div>';}
+function recordsTeaser(){
+ const c=S.consent,on=c&&c.expiry>now();
+ return'<div class="card"><div class="card-h"><h2>受益人財務紀錄</h2>'+(on?'<span class="pill p-ok"><i></i>已獲同意</span>':'<span class="pill"><i></i>未獲同意</span>')+'</div><p class="note" style="margin:0 0 10px">'+(on?'受益人同意你查看：':'需要受益人在自己的頁面開啟「資料分享」，你才看得到。')+'</p>'+(on?'<div class="row" style="margin-bottom:12px">'+scopeChips(c.scopes)+'</div>':'')+'<a href="#records" data-go="records" class="btn">'+(on?"查看紀錄":"了解規則")+'</a></div>';}
+function lockBox(t){return'<div class="lock">'+ico("lock")+'<div><b style="color:var(--text)">'+t+'</b><br>受益人尚未同意分享這一類紀錄，或授權已過期。</div></div>';}
+function vRecords(D){
+ const c=S.consent,allowed=canSeeRecords(),A=tokN(S.amount);
+ const head=ph("受益人財務紀錄","在受益人同意的範圍內，出資人可以查看受益人的支付、質押、借貸狀況，及早發現詐騙或過度借貸。受益人可以隨時撤回。",
+  (c&&c.expiry>D.t?'<span class="pill p-ok"><i></i>同意至 '+hm(c.expiry)+'</span>':'<span class="pill"><i></i>未獲同意</span>')+(demo?'<span class="pill p-warn"><i></i>示範資料</span>':''));
+ if(!consentAddr&&!demo)return head+'<div class="card"><div class="lock">'+ico("lock")+'<div><b style="color:var(--text)">尚未設定 RecordConsent 合約</b><br>到「設定」填入合約地址。這份合約獨立部署，不需要重新部署信託。</div></div></div>';
+ if(!allowed)return head+'<div class="card"><div class="lock">'+ico("lock")+'<div><b style="color:var(--text)">只有出資人可以查看</b><br>'+(me?"你目前的身分是"+(ROLE_N[myRole()]||"訪客")+"。":"請用出資人錢包連接。")+'受益人的授權對象是出資人地址'+(S.setSafe?"（或出資人 Safe 的成員）":"")+'。</div></div></div>'+consentLog();
+ const pays=S.payments||[],tin=pays.filter(p=>p.dir==="in").reduce((s,p)=>s+tokN(p.v),0),tout=pays.filter(p=>p.dir==="out").reduce((s,p)=>s+tokN(p.v),0);
+ const cpName=a=>a==="TRUST"||same(a,S.addr)?"信託撥款":same(a,S.settlor)?"出資人":S.listings.some(l=>same(l.buyer,a))?"承購人 "+short(a):short(a);
+ let out='<div class="kpis">'+kpi("同意範圍",SCOPES.filter(s=>c&&c.expiry>D.t&&(c.scopes&s[0])).length+'<small>/ 3 類</small>',c&&c.expiry>D.t?dur(c.expiry-D.t)+" 後到期":"未同意","var(--success)")+
+  kpi("轉入",consentOn(1)?fnum(tin,0)+'<small>'+S.symbol+'</small>':"—","最近 9000 個區塊","var(--s1)")+kpi("轉出",consentOn(1)?fnum(tout,0)+'<small>'+S.symbol+'</small>':"—",consentOn(1)?pays.filter(p=>p.dir==="out").length+" 筆":"需同意","var(--s2)")+
+  kpi("借貸健康度",consentOn(4)&&S.lending?fnum(S.lending.hf,2):"—",consentOn(4)&&S.lending?(S.lending.hf<1.2?"接近清算":"安全"):"需同意",consentOn(4)&&S.lending?(S.lending.hf<1.2?"var(--danger)":"var(--success)"):"var(--border)")+'</div>';
+ out+='<div class="card" style="margin-bottom:16px"><div class="card-h"><h2>支付紀錄</h2><span class="note">'+S.symbol+' 轉帳事件</span></div>'+(consentOn(1)?
+  (pays.length?'<div class="tbl"><table><thead><tr><th>時間</th><th>方向</th><th>對象</th><th class="r">金額</th><th class="r">交易</th></tr></thead><tbody>'+pays.map(p=>'<tr><td class="num">'+(p.ts?hm(p.ts):"#"+p.block)+'</td><td>'+(p.dir==="in"?'<span class="pill p-ok"><i></i>轉入</span>':'<span class="pill p-s2"><i></i>轉出</span>')+'</td><td>'+esc(cpName(p.cp))+'</td><td class="r num">'+(p.dir==="in"?"+":"−")+tok(p.v)+'</td><td class="r"><a class="addr" href="'+SCAN+'/tx/'+p.tx+'" target="_blank" rel="noopener">'+short(p.tx)+' ↗</a></td></tr>').join("")+'</tbody></table></div>':'<div class="empty">'+(S.extrasLoaded?"最近沒有轉帳":"讀取中…")+'</div>'):lockBox("支付紀錄"))+'</div>';
+ out+='<div class="g g-11"><div class="card"><div class="card-h"><h2>質押紀錄</h2></div>'+(consentOn(2)?(S.staking?'<div class="tbl"><table><thead><tr><th>協議</th><th>資產</th><th class="r">數量</th><th>開始</th><th>狀態</th></tr></thead><tbody>'+S.staking.map(r=>'<tr><td>'+r.p+'</td><td>'+r.asset+'</td><td class="r num">'+r.amt+'</td><td class="num">'+hm(r.since)+'</td><td><span class="pill '+(r.st==="質押中"?"p-ok":"p-warn")+'"><i></i>'+r.st+'</span></td></tr>').join("")+'</tbody></table></div>':notWired("質押")):lockBox("質押紀錄"))+'</div>'+
+  '<div class="card"><div class="card-h"><h2>借貸紀錄</h2>'+(consentOn(4)&&S.lending?'<span class="pill '+(S.lending.hf<1.2?"p-bad":"p-ok")+'"><i></i>健康度 '+fnum(S.lending.hf,2)+'</span>':'')+'</div>'+(consentOn(4)?(S.lending?'<div class="tbl"><table><thead><tr><th>協議</th><th>類型</th><th>資產</th><th class="r">數量</th></tr></thead><tbody>'+S.lending.rows.map(r=>'<tr><td>'+r.p+'</td><td>'+r.type+'</td><td>'+r.asset+'</td><td class="r num">'+r.amt+'</td></tr>').join("")+'</tbody></table></div>':notWired("借貸")):lockBox("借貸紀錄"))+'</div></div>';
+ return head+out+consentLog();
+}
+function notWired(t){return'<div class="lock">'+ico("lock")+'<div><b style="color:var(--text)">已獲同意，尚未接入'+t+'協議資料</b><br>需要設定 Sepolia 上的'+t+'協議地址（例如 Aave v3、Lido）後，才能讀取鏈上部位。</div></div>';}
+function consentLog(){
+ const ev=S.cEvents||[];
+ return'<div class="card"><div class="card-h"><h2>授權紀錄</h2><span class="note">RecordConsent 鏈上事件，不能竄改</span></div>'+(ev.length?'<div class="tbl"><table><thead><tr><th>時間</th><th>動作</th><th>對象</th><th>範圍</th><th>到期</th><th class="r">交易</th></tr></thead><tbody>'+ev.map(e=>'<tr><td class="num">'+(e.ts?hm(e.ts):"#"+e.block)+'</td><td>'+(e.n==="Granted"?'<span class="pill p-ok"><i></i>授權</span>':'<span class="pill p-bad"><i></i>撤回</span>')+'</td><td>'+esc(who(e.viewer))+'</td><td>'+(e.scopes?scopeChips(e.scopes):"—")+'</td><td class="num">'+(e.expiry?hm(e.expiry):"—")+'</td><td class="r"><a class="addr" href="'+SCAN+'/tx/'+e.tx+'" target="_blank" rel="noopener">'+short(e.tx)+' ↗</a></td></tr>').join("")+'</tbody></table></div>':'<div class="empty">還沒有授權紀錄</div>')+'</div>';}
+function payeeOpts(onlyApproved){return S.payees.filter(p=>!p.removed&&(!onlyApproved||p.approved)).map(p=>'<option value="'+p.addr+'">'+esc(p.label)+' · '+short(p.addr)+'</option>').join("");}
+function vPay(D){
+ const A=tokN(S.amount),pays=S.events.filter(e=>e.sig.startsWith("Paid("));
+ const ok=S.payees.filter(p=>p.approved&&!p.removed),usedSum=S.payees.reduce((s,p)=>s+tokN(p.used),0);
+ const w=S.payWindow,reset=(Math.floor(D.t/w)+1)*w;
+ const totals={};pays.forEach(e=>{const k=e.args[0];totals[k]=(totals[k]||0)+tokN(e.args[1]);});
+ return ph("支付","受益人可以把到期款直接付給核可的收款方（醫院、安養院、房東），錢不經過受益人錢包；也能從自己錢包付款並留下鏈上紀錄。收款方要出資人提名、受益人同意才生效，每段期間有上限。",roleNote("beneficiary"))+
+ '<div class="kpis">'+kpi("核可收款方",ok.length+'<small>/ '+S.payees.filter(p=>!p.removed).length+'</small>',S.payees.filter(p=>!p.removed&&!p.approved).length+" 個待受益人同意","var(--success)")+
+  kpi("可直付",fnum(D.benDue*A,0)+'<small>'+S.symbol+'</small>',D.benDue+" 期到期未領",D.payable?"var(--s1)":"var(--danger)")+
+  kpi("本期間已付",fnum(usedSum,0)+'<small>'+S.symbol+'</small>','<span data-cd="'+reset+'">'+dur(reset-D.t)+'</span> 後重新計算',"var(--warning)")+
+  kpi("付款筆數",pays.length+'<small>筆</small>',"最近 9000 個區塊","var(--primary)")+'</div>'+
+ '<div class="g g-21"><div class="stack">'+
+  '<div class="card"><div class="card-h"><div><h2>領取並付款</h2><p class="note">到期款中的一部分直接從信託付給收款方，其餘轉入受益人錢包</p></div><span class="pill p-pri"><i></i>信託直付</span></div>'+
+   (ok.length?'<div class="form"><div class="f"><label for="cpPayee">收款方</label><select id="cpPayee">'+payeeOpts(true)+'</select></div><div class="f"><label for="cpAmt">付款金額（顆）</label><input id="cpAmt" type="number" min="1" placeholder="'+fnum(D.benDue*A,0)+' 以內"></div><div class="f"><label for="cpMemo">備註</label><input id="cpMemo" placeholder="例如：11 月門診"></div>'+B("claimPay","領取並付款","pri","","beneficiary")+'</div>'+
+    '<p class="note" style="margin:10px 0 0">現在到期未領 '+fnum(D.benDue*A,0)+' '+S.symbol+'；付款超過這個數字或超過收款方上限都會被擋下。</p>':'<div class="empty">還沒有雙方核可的收款方</div>')+'</div>'+
+  '<div class="card"><div class="card-h"><div><h2>從錢包付款</h2><p class="note">用受益人錢包裡的 '+S.symbol+' 付款，同樣受上限保護並留下紀錄</p></div></div>'+
+   (ok.length?'<div class="form"><div class="f"><label for="wpPayee">收款方</label><select id="wpPayee">'+payeeOpts(true)+'</select></div><div class="f"><label for="wpAmt">金額（顆）</label><input id="wpAmt" type="number" min="1"></div><div class="f"><label for="wpMemo">備註</label><input id="wpMemo" placeholder="例如：11 月住宿費"></div>'+B("walletPay","付款","pri","","beneficiary")+'</div>':'<div class="empty">還沒有雙方核可的收款方</div>')+'</div>'+
+  '<div class="card"><div class="card-h"><h2>付款紀錄</h2></div>'+(pays.length?'<div class="tbl"><table><thead><tr><th>時間</th><th>收款方</th><th class="r">金額</th><th>來源</th><th>備註</th><th class="r">交易</th></tr></thead><tbody>'+
+   pays.map(e=>'<tr><td class="num">'+(e.ts?hm(e.ts):"#"+e.block)+'</td><td>'+esc(payeeName(e.args[0]))+'</td><td class="r num">'+tok(e.args[1])+'</td><td>'+(e.args[2]?'<span class="pill p-pri"><i></i>信託直付</span>':'<span class="pill"><i></i>錢包</span>')+'</td><td class="note">'+esc(e.args[3]||"")+'</td><td class="r"><a class="addr" href="'+SCAN+'/tx/'+e.tx+'" target="_blank" rel="noopener">'+short(e.tx)+' ↗</a></td></tr>').join("")+'</tbody></table></div>':'<div class="empty">'+(S.evLoaded?"還沒有付款":"讀取中…")+'</div>')+'</div>'+
+ '</div><div class="stack">'+
+  '<div class="card"><div class="card-h"><h2>收款方</h2><span class="note">每 '+dur(w)+' 重新計算上限</span></div>'+(S.payees.length?'<ul class="ev">'+S.payees.map(p=>{
+    const st=p.removed?'<span class="pill"><i></i>已移除</span>':p.approved?'<span class="pill p-ok"><i></i>已核可</span>':'<span class="pill p-warn"><i></i>待受益人同意</span>';
+    const capN=tokN(p.cap),used=tokN(p.used),pc=capN?Math.min(100,used/capN*100):0;
+    const acts=p.removed?"":(!p.approved?B("approvePayee:"+p.addr,"同意","pri",'data-id="'+p.addr+'"',"beneficiary"):"")+B("removePayee:"+p.addr,"移除","",'data-id="'+p.addr+'"',null);
+    return'<li style="grid-template-columns:1fr auto;display:grid"><div><div class="between"><b>'+esc(p.label)+'</b>'+st+'</div><div class="addr">'+short(p.addr)+'</div>'+
+     (p.removed?'':'<div class="between note" style="margin:6px 0 4px"><span>本期已付 '+fnum(used,0)+'</span><span>上限 '+(capN?fnum(capN,0):"不限")+'</span></div><div class="meter" style="height:5px"><i style="width:'+pc+'%;background:'+(pc>=90?"var(--danger)":"var(--success)")+'"></i></div>')+
+     '<div class="row" style="margin-top:8px">'+acts+'</div></div></li>';}).join("")+'</ul>':'<div class="empty">還沒有收款方</div>')+'</div>'+
+  '<div class="card"><div class="card-h"><h2>提名收款方</h2><span class="pill"><i></i>出資人</span></div><div class="form" style="grid-template-columns:1fr"><div class="f"><label for="pyLabel">名稱</label><input id="pyLabel" placeholder="例如：仁愛醫院"></div><div class="f"><label for="pyAddr">收款地址</label><input id="pyAddr" placeholder="0x…" spellcheck="false"></div><div class="f"><label for="pyCap">每 '+dur(w)+' 上限（顆，0＝不限）</label><input id="pyCap" type="number" min="0" value="1000"></div>'+B("propose","提名","pri","","settlor")+'</div>'+
+   '<p class="note" style="margin:10px 0 0">提名後要受益人按「同意」才生效；修改上限會重新需要同意。出資人或受益人任一方都能移除。</p></div>'+
+  (Object.keys(totals).length?'<div class="card"><h2 style="margin-bottom:12px">各收款方累計</h2>'+hbars(Object.keys(totals).map(k=>({label:payeeName(k),v:totals[k],color:"var(--success)"})),v=>fnum(v,0))+'</div>':'')+
+ '</div></div>';
+}
+let sbPick=null;
+function vMM(D){
+ const A=tokN(S.amount),ppy=S.ppy,pv=(k,r)=>A/(1+r/10000*k/ppy);
+ const act=S.bids.filter(b=>b.active),asks=S.listings.filter(l=>l.active&&l.fromId>=D.due);
+ const bestBid=act.length?Math.min(...act.map(b=>b.apr)):null,bestAsk=asks.length?Math.max(...asks.map(l=>l.apr)):null;
+ const h=holderAddr(),mine=h?D.periods.filter(p=>same(p.owner,h)&&!p.claimed&&!p.due):[];
+ const sample=(apr,n)=>{let s=0;for(let j=0;j<n;j++)s+=pv(2+j,apr);return s;};
+ const n=3,curve=[];for(let r=0;r<=3000;r+=100)curve.push([r/100,sample(r,n)]);
+ const marks=[...act.map(b=>({x:b.apr/100,y:sample(b.apr,n),color:"var(--s1)"})),...asks.filter(l=>l.toId-l.fromId+1===n).map(l=>({x:l.apr/100,y:tokN(l.price),color:"var(--s2)"}))];
+ const firstSell=D.periods.find(p=>p.st==="future"&&p.i>=D.due+2),f0=firstSell?firstSell.i:D.due+2;
+ return ph("做市商","做市商掛出常駐收購報價，資金先託管在合約；受益人或其他持有人隨時能以報價年化把期數賣給你，立即成交。買下的期數也能轉售或轉讓。","")+
+ '<div class="kpis">'+kpi("最佳收購年化",bestBid!=null?pct(bestBid):"—","越低＝出價越高",'var(--s1)')+kpi("最便宜掛單年化",bestAsk!=null?pct(bestAsk):"—","越高＝越便宜","var(--s2)")+
+  kpi("價差",bestBid!=null&&bestAsk!=null?fnum((bestAsk-bestBid)/100,2)+"%":"—",bestBid!=null&&bestAsk!=null&&bestAsk>bestBid?"掛單比報價便宜，可套利":"收購與掛單之間","var(--warning)")+
+  kpi("託管資金",tok(S.bidEscrow,0)+'<small>'+S.symbol+'</small>',act.length+" 張有效報價，不算進信託資金池","var(--primary)")+'</div>'+
+ '<div class="g g-21"><div class="card"><div class="card-h"><h2>收購報價簿</h2><span class="note">範例價＝收 3 期、2 期後開始</span></div>'+
+  (S.bids.length?'<div class="tbl"><table><thead><tr><th>#</th><th>做市商</th><th class="r">年化</th><th class="r">剩餘預算</th><th class="r">還收</th><th class="r">範例價</th><th>狀態</th><th></th></tr></thead><tbody>'+
+   S.bids.slice().reverse().map(b=>'<tr><td class="num">'+b.id+'</td><td class="note">'+esc(who(b.maker))+'</td><td class="r num">'+pct(b.apr)+'</td><td class="r num">'+tok(b.budget,0)+'</td><td class="r num">'+b.maxPeriods+' 期</td><td class="r num">'+(b.active?fnum(sample(b.apr,3),0):"—")+'</td><td>'+(b.active?'<span class="pill p-ok"><i></i>有效</span>':'<span class="pill"><i></i>結束</span>')+'</td><td class="r">'+
+    (b.active?(same(b.maker,demo?S.demoAddrs.mm:me)?B("cancelBid:"+b.id,"取消","",'data-id="'+b.id+'"',null):'<button class="btn" data-pick="'+b.id+'">賣給它</button>'):"")+'</td></tr>').join("")+'</tbody></table></div>':'<div class="empty">還沒有收購報價</div>')+'</div>'+
+  '<div class="card"><div class="card-h"><h2>掛出收購報價</h2><span class="pill"><i></i>做市商</span></div><div class="form" style="grid-template-columns:1fr 1fr"><div class="f"><label for="bdApr">收購年化（%）</label><input id="bdApr" type="number" step="0.5" min="0" max="'+S.maxApr/100+'" value="10"></div><div class="f"><label for="bdMax">最多收幾期</label><input id="bdMax" type="number" min="1" value="4"></div><div class="f" style="grid-column:1/-1"><label for="bdBudget">託管預算（顆）</label><input id="bdBudget" type="number" min="1" value="2000"></div>'+B("placeBid","掛出報價","pri","",null)+'</div>'+
+   '<p class="note" style="margin:10px 0 0">預算會先轉進合約託管，隨時可以取消並全額退回。年化不能超過 '+pct(S.maxApr)+'，避免壓價。</p></div></div>'+
+ '<div class="g g-11"><div class="card"><div class="card-h"><div><h2>賣給報價</h2><p class="note">持有人立即成交，售價依報價年化即時計算</p></div></div>'+
+   (act.length?'<div class="form"><div class="f"><label for="sbBid">報價</label><select id="sbBid">'+act.map(b=>'<option value="'+b.id+'"'+(sbPick===b.id?" selected":"")+'>#'+b.id+' · '+pct(b.apr)+' · 剩 '+b.maxPeriods+' 期</option>').join("")+'</select></div><div class="f"><label for="sbFrom">從第幾期</label><input id="sbFrom" type="number" value="'+f0+'"></div><div class="f"><label for="sbTo">到第幾期</label><input id="sbTo" type="number" value="'+(f0+1)+'"></div>'+B("sellBid","立即成交","pri","",null)+'</div><div class="quote" id="sbQuote" style="margin-top:12px"></div>':'<div class="empty">沒有有效的收購報價</div>')+'</div>'+
+  '<div class="card"><div class="card-h"><div><h2>報價深度</h2><p class="note">3 期的售價曲線；藍＝收購報價，橘＝同長度的掛單</p></div></div>'+
+   lineChart("depth",[{name:"3 期售價",color:"var(--faint)",pts:curve}],{xmin:0,xmax:30,xticks:[0,10,20,30],xFmt:v=>v+"%",yFmt:v=>fnum(v,0),tFmt:v=>fnum(v,0)+" "+S.symbol,tTitle:v=>"年化 "+v+"%",band:{x0:S.maxApr/100,x1:30,label:"合約禁止"},marks,ymin:n*A,y0:Math.floor(Math.min(...curve.map(p=>p[1]))/100)*100-100,w:560,aria:"報價深度"})+'</div></div>'+
+ '<div class="card"><div class="card-h"><div><h2>我的持有：轉售與轉讓</h2><p class="note">'+(h?esc(who(h)):"連接錢包後顯示")+' · 未到期 '+mine.length+' 期</p></div></div>'+
+  (mine.length?'<div class="periods" style="margin-bottom:14px">'+mine.map(p=>'<div class="cell s-sold">'+p.i+'</div>').join("")+'</div>'+
+   '<div class="g g-11" style="margin:0"><div><h2 style="margin-bottom:8px;font-size:13px">掛出轉售</h2><div class="form"><div class="f"><label for="rsFrom">從</label><input id="rsFrom" type="number" value="'+mine[0].i+'"></div><div class="f"><label for="rsTo">到</label><input id="rsTo" type="number" value="'+mine[0].i+'"></div><div class="f"><label for="rsPrice">售價（顆）</label><input id="rsPrice" type="number" value="'+Math.ceil(pv(mine[0].i+1-D.due,700))+'"></div>'+B("resale","轉售","pri","",null)+'</div></div>'+
+   '<div><h2 style="margin-bottom:8px;font-size:13px">轉讓給他人</h2><div class="form"><div class="f" style="grid-column:1/-1"><label for="trTo">對象地址</label><input id="trTo" placeholder="0x…" spellcheck="false"></div><div class="f"><label for="trFrom">從</label><input id="trFrom" type="number" value="'+mine[0].i+'"></div><div class="f"><label for="trTo2">到</label><input id="trTo2" type="number" value="'+mine[0].i+'"></div>'+B("transfer","轉讓","",'',null)+'</div></div></div>':'<div class="empty">沒有可轉售的期數。先到承購市場買，或掛出收購報價等人賣給你。</div>')+'</div>';
+}
+async function sbQuote(D){const box=$("#sbQuote");if(!box)return;const b=S.bids.find(x=>x.id===+val("sbBid")),f=+val("sbFrom"),t=+val("sbTo");
+ if(!b||!(t>=f)||f<D.due||t>=S.total){box.innerHTML='<div style="grid-column:1/-1;color:var(--warning)">範圍要在第 '+D.due+'–'+(S.total-1)+' 期之間</div>';return;}
+ let price;if(demo){let s=0;for(let j=0;j<t-f+1;j++)s+=tokN(S.amount)/(1+b.apr/10000*((f+1-D.due)+j)/S.ppy);price=s;}
+ else{try{price=tokN(await new ethers.Contract(trustAddr,TRUST_ABI,wprov||rprov).quote(f,t,b.apr));}catch(e){box.innerHTML='<div style="grid-column:1/-1;color:var(--danger)">'+esc(errMsg(e))+'</div>';return;}}
+ const face=(t-f+1)*tokN(S.amount),ok=price<=tokN(b.budget)&&t-f+1<=b.maxPeriods;
+ box.innerHTML='<div><small>面額</small><b>'+fnum(face,0)+'</b></div><div><small>你會拿到</small><b>'+fnum(price,2)+'</b></div><div><small>折價</small><b>'+fnum((1-price/face)*100,2)+'%</b></div>'+(ok?'':'<div style="grid-column:1/-1;color:var(--warning)">超過這個報價的剩餘預算或期數</div>');}
+function vCashflow(D){
+ const A=tokN(S.amount),cs=cumSeries(D);
+ const bars=D.periods.map(p=>({label:p.i,v:A,color:p.ben?"var(--s1)":"var(--s2)",hatch:!p.due,
+  tip:'<div class="t">第 '+p.i+' 期 · '+ST_N[p.st]+'</div><div class="r"><span>到期</span><span>'+hm(p.dueAt)+'</span></div><div class="r"><span>付給</span><span>'+esc(who(p.owner))+'</span></div><div class="r"><span>金額</span><span>'+fnum(A,0)+'</span></div>'}));
+ const benPaid=D.periods.filter(p=>p.ben&&p.claimed).length*A,benLeft=D.periods.filter(p=>p.ben&&!p.claimed).length*A,buyPaid=D.periods.filter(p=>!p.ben&&p.claimed).length*A,buyLeft=D.periods.filter(p=>!p.ben&&!p.claimed).length*A;
+ const proceeds=tokN(D.deals.reduce((s,l)=>s+l.price,0n));
+ const rows=D.periods.map(p=>'<tr><td class="num">#'+p.i+'</td><td class="num">'+hm(p.dueAt)+'</td><td><span class="row" style="gap:6px"><span class="dot" style="background:'+(p.ben?"var(--s1)":"var(--s2)")+'"></span>'+esc(who(p.owner))+'</span></td><td class="r num">'+fnum(A,0)+'</td><td>'+(p.claimed?'<span class="pill"><i></i>已付</span>':p.due?'<span class="pill p-ok"><i></i>到期未領</span>':'<span class="pill p-pri"><i></i><span data-cd="'+p.dueAt+'">'+dur(p.dueAt-D.t)+'</span></span>')+'</td></tr>').join("");
+ return ph("現金流","每一期什麼時候付、付給誰。已售出的期數改付給承購人，受益人則在售出時先拿到對價。","")+
+ '<div class="kpis">'+kpi("受益人已收",fnum(benPaid,0)+'<small>'+S.symbol+'</small>',"待收 "+fnum(benLeft,0),"var(--s1)")+kpi("承購人已收",fnum(buyPaid,0)+'<small>'+S.symbol+'</small>',"待收 "+fnum(buyLeft,0),"var(--s2)")+
+  kpi("售出對價",fnum(proceeds,0)+'<small>'+S.symbol+'</small>',"受益人提前拿到","var(--warning)")+kpi("剩餘期數",(S.total-D.due)+'<small>期</small>',"約 "+dur((S.total-D.due)*S.interval)+" 後結束","var(--primary)")+'</div>'+
+ '<div class="card" style="margin-bottom:16px"><div class="card-h"><div><h2>每期撥款對象</h2><p class="note">實心＝已到期，斜線＝未到期；滑鼠移上去看細節</p></div><div class="legend" style="margin:0"><span><i style="background:var(--s1)"></i>受益人</span><span><i style="background:var(--s2)"></i>承購人</span></div></div>'+
+  barChart("pb",bars,{yFmt:v=>fnum(v,0),vline:D.due,h:150,aria:"每期撥款對象"})+'</div>'+
+ '<div class="g g-21"><div class="card"><div class="card-h"><h2>累計撥款</h2><div class="legend" style="margin:0"><span><i class="ln" style="background:var(--s1)"></i>受益人</span><span><i class="ln" style="background:var(--s2)"></i>承購人</span></div></div>'+
+  lineChart("cum2",[{name:"受益人",color:"var(--s1)",pts:cs.ben,label:"受益人 "+fnum(cs.ben[cs.ben.length-1][1],0)},{name:"承購人",color:"var(--s2)",pts:cs.buy,label:"承購人 "+fnum(cs.buy[cs.buy.length-1][1],0)}],
+   {xmin:0,xmax:S.total,xticks:xt(),xFmt:v=>"第"+v+"期",yFmt:v=>fnum(v,0),tFmt:v=>fnum(v,0),tTitle:v=>"第 "+v+" 期結束時",vline:{x:nowX(D),label:"現在"},aria:"累計撥款",w:760})+'</div>'+
+  '<div class="card"><h2 style="margin-bottom:14px">誰拿多少</h2>'+hbars([{label:"受益人 · 撥款",v:benPaid+benLeft,color:"var(--s1)"},{label:"受益人 · 售出對價",v:proceeds,color:"var(--warning)"},{label:"承購人 · 到期收回",v:buyPaid+buyLeft,color:"var(--s2)"}],v=>fnum(v,0))+
+  '<p class="note" style="margin:16px 0 0">受益人總共拿到 <b class="num" style="color:var(--text)">'+fnum(benPaid+benLeft+proceeds,0)+'</b>，比全部自己領的 '+fnum(S.total*A,0)+' 少 <b class="num" style="color:var(--text)">'+fnum(S.total*A-benPaid-benLeft-proceeds,0)+'</b>，這是提前用錢的成本，也是承購人的收益。</p></div></div>'+
+ '<div class="card"><div class="card-h"><h2>完整排程</h2><span class="note">'+S.total+' 期</span></div><div class="tbl" style="max-height:420px;overflow-y:auto"><table><thead><tr><th>期</th><th>到期時間</th><th>付給</th><th class="r">金額</th><th>狀態</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
+}
+let mkSpan=3;
+function vMarket(D){
+ const A=tokN(S.amount),ppy=S.ppy,maxN=Math.min(20,S.total),pv=(k,r)=>A/(1+r/10000*k/ppy);
+ const fair=[],floor=[];for(let k=1;k<=maxN;k++){fair.push([k,pv(k,FAIR_APR)]);floor.push([k,pv(k,S.maxApr)]);}
+ const n=mkSpan,w0=2,curve=[];for(let r=0;r<=4000;r+=100){let s=0;for(let j=0;j<n;j++)s+=pv(w0+j,r);curve.push([r/100,s]);}
+ const act=S.listings.filter(l=>l.active&&l.fromId>=D.due),marks=act.filter(l=>l.toId-l.fromId+1===n).map(l=>({x:l.apr/100,y:tokN(l.price),color:"var(--warning)"}));
+ return ph("承購市場與定價","售價怎麼來：每一期依「還要等幾期」用年化利率折現。合約不允許隱含年化超過上限，保護賣方不被壓價。",roleNote("buyer"))+
+ '<div class="kpis">'+kpi("掛單中",act.length+'<small>張</small>',D.n.listed+" 期","var(--warning)")+
+  kpi("平均隱含年化",act.length?pct(Math.round(act.reduce((s,l)=>s+l.apr,0)/act.length)):"—","掛單中的平均","var(--primary)")+
+  kpi("已成交",D.deals.length+'<small>筆</small>',tok(D.deals.reduce((s,l)=>s+l.price,0n),0)+" "+S.symbol,"var(--s2)")+
+  kpi("年化上限",pct(S.maxApr),"合約固定，不可改","var(--danger)")+'</div>'+
+ '<div class="card" style="margin-bottom:16px"><div class="card-h"><h2>可承購的掛單</h2></div>'+listingTable(D,"market")+'</div>'+
+ '<div class="g g-11"><div class="card"><div class="card-h"><div><h2>單期現值</h2><p class="note">一期 '+fnum(A,0)+'，離現在越遠越便宜</p></div><div class="legend" style="margin:0"><span><i class="ln" style="background:var(--s1)"></i>8% 合理價</span><span><i class="ln" style="background:var(--danger)"></i>'+pct(S.maxApr)+' 最低價</span></div></div>'+
+   lineChart("pv",[{name:"8% 合理價",color:"var(--s1)",pts:fair},{name:pct(S.maxApr)+" 最低價",color:"var(--danger)",pts:floor,dash:true}],
+    {xmin:1,xmax:maxN,xticks:[1,5,10,15,20].filter(v=>v<=maxN),xFmt:v=>v+"期後",yFmt:v=>fnum(v,0),tFmt:v=>fnum(v,1),tTitle:v=>"等 "+v+" 期才到期",ymin:A,y0:Math.floor(Math.min(...floor.map(p=>p[1]))/50)*50-50,w:560,aria:"單期現值"})+'</div>'+
+  '<div class="card"><div class="card-h"><div><h2>售價 vs 年化</h2><p class="note">賣 '+n+' 期、2 期後開始；橘點＝同長度的掛單</p></div><div class="seg" id="spanSeg">'+[1,2,3,4,6].map(v=>'<button data-span="'+v+'" aria-pressed="'+(v===n)+'">'+v+' 期</button>').join("")+'</div></div>'+
+   lineChart("apr",[{name:"售價",color:"var(--s1)",pts:curve}],{xmin:0,xmax:40,xticks:[0,10,20,30,40],xFmt:v=>v+"%",yFmt:v=>fnum(v,0),tFmt:v=>fnum(v,0)+" "+S.symbol,tTitle:v=>"年化 "+v+"%",
+    band:{x0:S.maxApr/100,x1:40,label:"合約禁止"},marks,ymin:n*A,y0:Math.floor(Math.min(...curve.map(p=>p[1]))/100)*100-100,w:560,aria:"售價與年化"})+'</div></div>'+
+ '<div class="card"><h2 style="margin-bottom:10px">定價公式</h2><p class="mono" style="font-size:13px;margin:0 0 8px">PV = Σ A ÷ (1 + r × (w + j) ÷ '+ppy+')</p><p class="note" style="margin:0">A＝每期金額；r＝年化；w＝第一期還要等幾期；j＝0…n−1。合約用單利、整數運算，隱含年化用二分法反解。成交時會再檢查一次上限：同一個售價放越久，隱含年化越高。</p></div>';
+}
+let ledFilter="all";
+function vLedger(D){
+ const counts={};Object.values(EVENTS).forEach(m=>counts[m.k]=0);S.events.forEach(e=>counts[EVENTS[e.sig].k]++);
+ const list=S.events.filter(e=>ledFilter==="all"||EVENTS[e.sig].k===ledFilter);
+ const flows={in:0,out:0,p2p:0};S.events.forEach(e=>{const a=e.args;if(!a)return;const k=EVENTS[e.sig].k;try{if(k==="fund")flows.in+=tokN(a[1]);if(k==="claim")flows.out+=tokN(a[2]);if(k==="sold")flows.p2p+=tokN(a[2]);}catch(x){}});
+ return ph("帳簿","合約每一筆資金進出與狀態改變都會發出事件，寫在交易收據裡，等同信託帳簿。每筆都能點到 Etherscan 查證。","")+
+ '<div class="kpis">'+kpi("流入信託",fnum(flows.in,0)+'<small>'+S.symbol+'</small>',"存入事件合計","var(--success)")+kpi("流出信託",fnum(flows.out,0)+'<small>'+S.symbol+'</small>',"領取事件合計","var(--s1)")+kpi("承購付款",fnum(flows.p2p,0)+'<small>'+S.symbol+'</small>',"承購人 → 受益人","var(--s2)")+kpi("事件數",S.events.length+'<small>筆</small>',"最近 9000 個區塊","var(--primary)")+'</div>'+
+ '<div class="g g-12"><div class="card"><h2 style="margin-bottom:14px">事件類型</h2>'+hbars(Object.keys(EVENTS).map(s=>({label:EVENTS[s].n,v:counts[EVENTS[s].k],color:EVENTS[s].c})),v=>v+" 筆")+'</div>'+
+ '<div class="card"><div class="card-h"><h2>事件紀錄</h2><div class="seg" id="ledSeg">'+[["all","全部"],["fund","存入"],["claim","領取"],["list","掛單"],["sold","成交"],["pause","暫停"]].map(f=>'<button data-f="'+f[0]+'" aria-pressed="'+(ledFilter===f[0])+'">'+f[1]+'</button>').join("")+'</div></div>'+
+  (S.evLoaded?(list.length?'<div class="tbl"><table><thead><tr><th>時間</th><th>類型</th><th>內容</th><th class="r">交易</th></tr></thead><tbody>'+list.map(e=>{const m=EVENTS[e.sig];return'<tr><td class="num">'+(e.ts?hm(e.ts):"#"+e.block)+'</td><td><span class="row" style="gap:6px"><span class="dot" style="background:'+m.c+'"></span>'+m.n+'</span></td><td class="note">'+esc(evDesc(e))+'</td><td class="r"><a class="addr" href="'+SCAN+'/tx/'+e.tx+'" target="_blank" rel="noopener">'+short(e.tx)+' ↗</a></td></tr>';}).join("")+'</tbody></table></div>':'<div class="empty">沒有符合的事件</div>'):'<div class="empty">讀取中…</div>')+'</div></div>';
+}
+function vRules(D){
+ const M=[["存入資金","fund","Y","N","N","N"],["暫停 / 恢復撥款","pause · unpause","Y","N","N","N"],["掛單出售未來期數","listPeriods","N","Y","N","N"],["取消掛單","cancelListing","N","Y","N","N"],
+  ["承購期數","buy","N","N","Y","Y"],["領取到期款","claim","N","自己的","自己的","N"],["開啟 / 撤回資料分享","grant · revoke","N","Y","N","N"],["查看受益人財務紀錄","（前端，依 canView）","需同意","N","N","N"],["提名收款方","proposePayee","Y","N","N","N"],["核可收款方／直付","approvePayee · claimAndPay","N","Y","N","N"],["掛收購報價","placeBid","N","N","Y","Y"],["賣給報價","sellToBid","N","Y","Y","N"],["轉讓期數","transferPeriods","N","N","Y","N"],["升級合約","upgradeToAndCall","管理員","N","N","N"],["查詢所有數字","claimable · quote …","Y","Y","Y","Y"]];
+ const cell=v=>v==="Y"?'<b class="y">可以</b>':v==="N"?'<span class="n">—</span>':'<b class="a">'+v+'</b>';
+ return ph("規則與權限","規則寫在合約裡，部署後永遠固定。前端只是介面：繞過網頁直接呼叫合約，一樣會被擋下。","")+
+ '<div class="card" style="margin-bottom:16px"><div class="card-h"><h2>權限矩陣</h2><span class="note">合約用 msg.sender 判斷身分</span></div><div class="tbl"><table><thead><tr><th>動作</th><th>函式</th><th class="c">出資人</th><th class="c">受益人</th><th class="c">承購人</th><th class="c">任何人</th></tr></thead><tbody>'+
+  M.map(r=>'<tr><td>'+r[0]+'</td><td class="mono note">'+r[1]+'</td>'+r.slice(2).map(v=>'<td class="c">'+cell(v)+'</td>').join("")+'</tr>').join("")+'</tbody></table></div></div>'+
+ '<div class="g g-111"><div class="card"><h2 style="margin-bottom:10px">固定參數</h2><dl class="kv"><dt>出資人</dt><dd>'+link(S.settlor)+'</dd><dt>受益人</dt><dd>'+link(S.beneficiary)+'</dd><dt>代幣</dt><dd>'+link(S.token,S.symbol)+'</dd><dt>每期 × 期數</dt><dd>'+tok(S.amount,0)+' × '+S.total+'</dd><dt>間隔</dt><dd>'+dur(S.interval)+'</dd><dt>年化上限</dt><dd>'+pct(S.maxApr)+'</dd><dt>暫停上限</dt><dd>'+S.maxPause+' / '+S.pauseBudget+' 期</dd></dl></div>'+
+  '<div class="card"><h2 style="margin-bottom:10px">安全設計</h2><ul class="plain"><li>不可升級、不可撤銷</li><li>存入不得超過未付總額（OverFunded）</li><li>受益人領款要保留承購人的錢（InsufficientFunds）</li><li>Checks-Effects-Interactions + ReentrancyGuard</li><li>拉式付款：本人呼叫 claim 才轉帳</li></ul></div>'+
+  '<div class="card"><h2 style="margin-bottom:10px">利益衝突防護</h2><ul class="plain"><li>受益人可設為家族 Safe 多簽，動作需多數簽名</li><li>財務紀錄只在受益人同意的範圍與期間內顯示</li><li>出資人握有暫停權，所以不能承購</li><li>受益人不能買自己的掛單</li><li>成交時重新檢查年化上限與擔保足額</li><li>暫停只延後、不沒收，次數與總量有上限</li></ul></div></div>'+
+ '<div class="card" style="margin-bottom:16px"><div class="card-h"><h2>升級治理</h2>'+(S.upgradesFrozen?'<span class="pill p-ok"><i></i>已永久凍結</span>':'<span class="pill p-warn"><i></i>可升級（UUPS）</span>')+'</div>'+
+  '<dl class="kv"><dt>合約版本</dt><dd>'+esc(S.version||"—")+'</dd><dt>升級管理員</dt><dd>'+link(S.upgradeAdmin,who(S.upgradeAdmin))+'</dd><dt>信託地址</dt><dd>'+(demo?"示範":link(S.addr))+'</dd></dl>'+
+  '<p class="note" style="margin:12px 0">升級只換掉程式邏輯，地址與資金不變。升級權目前在單一錢包，承購人需要信任管理員；正式上線前可以移交多簽，或按下面的按鈕永久凍結，讓規則從此固定。</p>'+
+  (S.upgradesFrozen?'':'<button class="btn dng" data-act="freeze"'+(demo||same(me,S.upgradeAdmin)?'':' disabled')+'>永久凍結升級</button>')+'</div>'+
+ '<div class="card"><div class="card-h"><h2>錯誤對照</h2><span class="note">被擋下時前端顯示的中文</span></div><div class="tbl"><table><thead><tr><th>錯誤名稱</th><th>意思</th></tr></thead><tbody>'+
+  Object.keys(ZH).map(k=>'<tr><td class="mono">'+k+'</td><td>'+ZH[k]+'</td></tr>').join("")+'</tbody></table></div></div>';
+}
+function vSettings(){
+ return ph("設定","選擇要查看的信託合約。地址會記在這台瀏覽器，也可以把網址（含 ?trust=）分享給別人。","")+
+ '<div class="g g-21"><div class="card"><h2 style="margin-bottom:12px">信託合約</h2><div class="form" style="grid-template-columns:1fr auto auto"><div class="f"><label for="cfgAddr">FamilyTrust 地址</label><input id="cfgAddr" spellcheck="false" placeholder="0x…" value="'+esc(trustAddr)+'"></div><button class="btn pri" id="cfgSave">載入</button><button class="btn" id="cfgDemo">示範資料</button></div>'+
+  (S&&!demo?'<p class="note" style="margin:12px 0 0">目前：'+link(S.addr,S.addr)+'</p>':'')+
+  '<h2 style="margin:22px 0 12px">RecordConsent 合約（選填）</h2><div class="form" style="grid-template-columns:1fr auto"><div class="f"><label for="cfgConsent">受益人授權查詢合約地址</label><input id="cfgConsent" spellcheck="false" placeholder="0x…" value="'+esc(consentAddr)+'"></div><button class="btn" id="cfgConsentSave">儲存</button></div>'+
+  '<p class="note" style="margin:10px 0 0">獨立部署的小合約，不需要重新部署信託。沒填的話，「資料分享」與「受益人財務紀錄」會停用。</p>'+
+  (S?'<h2 style="margin:22px 0 10px">多簽偵測</h2><dl class="kv"><dt>出資人</dt><dd>'+(S.setSafe?"Safe "+S.setSafe.threshold+" / "+S.setSafe.owners.length:"一般錢包")+'</dd><dt>受益人</dt><dd>'+(S.benSafe?"Safe "+S.benSafe.threshold+" / "+S.benSafe.owners.length:"一般錢包")+'</dd></dl><p class="note" style="margin:10px 0 0">部署信託時把受益人地址填成 Safe，就自動成為家族多簽，合約不用改。</p>':'')+'</div>'+
+  '<div class="card"><h2 style="margin-bottom:10px">網路</h2><dl class="kv"><dt>鏈</dt><dd>Sepolia 11155111</dd><dt>唯讀節點</dt><dd>publicnode</dd><dt>錢包</dt><dd>'+(me?short(me):"未連接")+'</dd></dl><p class="note" style="margin:12px 0 0">沒連錢包也能看所有頁面；要送交易才需要 MetaMask。這個站只支援 FamilyTrustV2（可升級版）；舊合約請到 <a href="https://zoo100130.github.io/dapp_family-trust_test/" target="_blank" rel="noopener">舊版網站</a>。</p></div></div>';
+}
+function vEmpty(){return ph("歡迎使用 FamilyTrust","鏈上信託的控制台：出資人、受益人、承購人各有自己的工作台，加上現金流、定價與帳簿分析。","")+
+ '<div class="card"><div class="empty" style="padding:40px 0"><p style="margin:0 0 14px;color:var(--text)">還沒載入信託合約</p><div class="row" style="justify-content:center"><button class="btn pri" data-go="settings">設定合約地址</button><button class="btn" id="goDemo">先看示範資料</button></div></div></div>';}
+
+/* ---------- render ---------- */
+function snapForm(){const m={};document.querySelectorAll("#view input[id],#view select[id]").forEach(e=>{m[e.id]={v:e.type==="checkbox"?e.checked:e.value,t:e.dataset.touched};});
+ const sc=[...document.querySelectorAll("#view [data-scope]")].map(e=>e.checked);return{m,sc,a:document.activeElement&&document.activeElement.id};}
+function restoreForm(f){if(!f)return;Object.keys(f.m).forEach(id=>{const e=document.getElementById(id);if(!e||id==="cfgAddr"&&!f.m[id].t)return;
+  if(e.type==="checkbox")e.checked=f.m[id].v;else if(f.m[id].v!==""||f.m[id].t)e.value=f.m[id].v;if(f.m[id].t)e.dataset.touched=f.m[id].t;});
+ const sc=document.querySelectorAll("#view [data-scope]");if(f.sc.length===sc.length)sc.forEach((e,i)=>e.checked=f.sc[i]);if(f.a){const e=document.getElementById(f.a);if(e)e.focus();}}
+let lastPage=null;
+function render(){
+ const keepForm=lastPage===page?snapForm():null;lastPage=page;
+ renderChrome();const v=$("#view");
+ if(!S&&page!=="settings"){v.innerHTML=vEmpty();$("#banner").innerHTML="";bindView(null);return;}
+ const D=S?derive():null;
+ $("#banner").innerHTML=!D?"":D.paused?'<div class="banner bad"><b>暫停中</b>出資人暫停了受益人撥款，'+dur(S.pausedUntil-D.t)+' 後自動恢復。承購人不受影響。</div>':
+  (!D.fullyFunded?'<div class="banner warn"><b>尚未存足</b>信託目前有 '+tok(S.balance,0)+' / '+tok(S.unpaid,0)+' '+S.symbol+(D.payable?'，暫時不能掛單或承購。':'，連到期的款項都付不出來。請出資人到「出資人」頁存入。')+'</div>':(demo?'<div class="banner info">示範資料：數字是假的，按鈕不會送出交易。到「設定」載入真實合約。</div>':''));
+ v.innerHTML=({overview:vOverview,settlor:vSettlor,beneficiary:vBeneficiary,buyer:vBuyer,pay:vPay,mm:vMM,records:vRecords,cashflow:vCashflow,market:vMarket,ledger:vLedger,rules:vRules,settings:vSettings}[page]||vOverview)(D);
+ restoreForm(keepForm);bindView(D);
+}
+function bindView(D){
+ document.querySelectorAll("[data-go]").forEach(a=>a.onclick=e=>{e.preventDefault();nav(a.dataset.go);});
+ const gd=$("#goDemo");if(gd)gd.onclick=startDemo;
+ const cs=$("#cfgSave");if(cs){cs.onclick=()=>{if(setTrust($("#cfgAddr").value)){S=null;page="overview";load();}};$("#cfgAddr").onkeydown=e=>{if(e.key==="Enter")cs.click();};}
+ const cd=$("#cfgDemo");if(cd)cd.onclick=startDemo;
+ const ccs=$("#cfgConsentSave");if(ccs)ccs.onclick=()=>{const a=($("#cfgConsent").value||"").trim();if(a&&!/^0x[0-9a-fA-F]{40}$/.test(a)){toast("地址格式不對","bad");return;}
+  consentAddr=a?ethers.getAddress(a):"";lsSet("ft_consent",consentAddr);const u=new URL(location.href);if(consentAddr)u.searchParams.set("consent",consentAddr);else u.searchParams.delete("consent");history.replaceState(null,"",u);toast(consentAddr?"已儲存 RecordConsent 地址":"已清除","ok");load();};
+ if(!D)return;
+ document.querySelectorAll("[data-act]").forEach(b=>b.onclick=()=>act(b.dataset.act,b.dataset.id));
+ document.querySelectorAll("[data-pick]").forEach(b=>b.onclick=()=>{sbPick=+b.dataset.pick;const s=$("#sbBid");if(s){s.value=b.dataset.pick;s.scrollIntoView({behavior:"smooth",block:"center"});sbQuote(D);}});
+ ["sbBid","sbFrom","sbTo"].forEach(id=>{const el=document.getElementById(id);if(el)el.addEventListener("input",()=>sbQuote(D));});if($("#sbQuote"))sbQuote(D);
+ document.querySelectorAll("#spanSeg [data-span]").forEach(b=>b.onclick=()=>{mkSpan=+b.dataset.span;render();});
+ document.querySelectorAll("#ledSeg [data-f]").forEach(b=>b.onclick=()=>{ledFilter=b.dataset.f;render();});
+ const g=$("#pgrid");if(g){g.onmousemove=e=>{const c=e.target.closest("[data-p]");if(!c){hideTip();return;}const p=D.periods[+c.dataset.p];
+  showTip('<div class="t">第 '+p.i+' 期 · '+ST_N[p.st]+(p.listing>=0?" #"+p.listing:"")+'</div><div class="r"><span>到期</span><span>'+hm(p.dueAt)+'</span></div><div class="r"><span>擁有者</span><span>'+esc(who(p.owner))+'</span></div>',e);};g.onmouseleave=hideTip;}
+ document.querySelectorAll("#view input[id],#view select[id]").forEach(e=>{const o=e.oninput;e.addEventListener("input",()=>{e.dataset.touched="1";});});
+ ["lsFrom","lsTo"].forEach(id=>{const el=document.getElementById(id);if(el)el.oninput=()=>quoteForm(D);});if($("#lsFrom"))quoteForm(D);
+ bindCharts();
+}
+let qSeq=0;
+async function quoteForm(D){
+ const box=$("#quoteBox");if(!box)return;const f=+$("#lsFrom").value,t=+$("#lsTo").value,seq=++qSeq;
+ if(!(t>=f)||f<D.due||t>=S.total){box.innerHTML='<div style="grid-column:1/-1;color:var(--warning)">範圍要在第 '+D.due+'–'+(S.total-1)+' 期之間，且起始期 ≤ 結束期</div>';return;}
+ const n=t-f+1,face=S.amount*BigInt(n);let fair,floor;
+ if(demo){const pv=r=>{let s=0;for(let j=0;j<n;j++)s+=tokN(S.amount)/(1+r/10000*((f+1-D.due)+j)/S.ppy);return BigInt(Math.round(s*1e6));};fair=pv(FAIR_APR);floor=pv(S.maxApr);}
+ else{try{const c=new ethers.Contract(trustAddr,TRUST_ABI,wprov||rprov);[fair,floor]=await Promise.all([c.quote(f,t,FAIR_APR),c.quote(f,t,S.maxApr)]);}catch(e){box.innerHTML='<div style="grid-column:1/-1;color:var(--danger)">報價失敗：'+esc(errMsg(e))+'</div>';return;}}
+ if(seq!==qSeq)return;const up=v=>Math.ceil(tokN(v));
+ box.innerHTML='<div><small>面額（'+n+' 期）</small><b>'+tok(face,0)+'</b></div><div><small>合理價（8%）</small><b>'+up(fair).toLocaleString()+'</b></div><div><small>最低價（'+pct(S.maxApr)+'）</small><b>'+up(floor).toLocaleString()+'</b></div>';
+ const p=$("#lsPrice");if(p&&!p.dataset.touched)p.value=up(fair);if(p)p.oninput=()=>p.dataset.touched="1";
+}
+const ROLE_OF={fund:"settlor",pause:"settlor",unpause:"settlor",list:"beneficiary",cancel:"beneficiary",claim:"beneficiary",grant:"beneficiary",revoke:"beneficiary"};
+function viaSafe(k,id){
+ const role=ROLE_OF[k],safe=safeFor(role);if(!safe)return false;
+ const enc=(fn,args)=>tIface.encodeFunctionData(fn,args),txs=[];let title="";
+ if(k==="fund"){const v=Math.floor(+$("#fundAmt").value);if(!(v>0)){toast("請輸入金額","bad");return true;}
+  const eI=new ethers.Interface(ERC20_ABI);txs.push({label:"授權代幣 approve",to:S.token,data:eI.encodeFunctionData("approve",[demo?ethers.ZeroAddress:trustAddr,BigInt(v)*S.unit])});
+  txs.push({label:"存入 fund("+v+")",to:demo?"0x(信託地址)":trustAddr,data:enc("fund",[BigInt(v)])});title="存入 "+v;}
+ if(k==="pause"){const n=+$("#pauseN").value;txs.push({label:"pause("+n+")",to:trustAddr||"0x(信託地址)",data:enc("pause",[n])});title="暫停 "+n+" 期";}
+ if(k==="unpause"){txs.push({label:"unpause()",to:trustAddr||"0x(信託地址)",data:enc("unpause",[])});title="恢復撥款";}
+ if(k==="claim"){txs.push({label:"claim()",to:trustAddr||"0x(信託地址)",data:enc("claim",[])});title="領取";}
+ if(k==="list"){const f=+$("#lsFrom").value,t=+$("#lsTo").value,p=Math.floor(+$("#lsPrice").value);if(!(p>0)){toast("請輸入售價","bad");return true;}
+  txs.push({label:"listPeriods("+f+", "+t+", "+p+")",to:trustAddr||"0x(信託地址)",data:enc("listPeriods",[f,t,p])});title="掛單第 "+f+"–"+t+" 期";}
+ if(k==="cancel"){txs.push({label:"cancelListing("+id+")",to:trustAddr||"0x(信託地址)",data:enc("cancelListing",[+id])});title="取消掛單 #"+id;}
+ if(k==="grant"||k==="revoke"){const g=consentArgs();if(!g)return true;
+  txs.push(k==="grant"?{label:"grant(出資人, "+g.scopes+", 到期)",to:consentAddr||"0x(RecordConsent 地址)",data:cIface.encodeFunctionData("grant",[S.settlor,g.scopes,g.expiry])}:
+   {label:"revoke(出資人)",to:consentAddr||"0x(RecordConsent 地址)",data:cIface.encodeFunctionData("revoke",[S.settlor])});title=k==="grant"?"開啟資料分享":"撤回資料分享";}
+ safeModal(safe,txs,title);return true;
+}
+function consentArgs(){const sc=[...document.querySelectorAll("[data-scope]:checked")].reduce((s,e)=>s|+e.dataset.scope,0);
+ if(!sc){toast("請至少選一個類別","bad");return null;}const days=+($("#cDays")||{value:7}).value;return{scopes:sc,expiry:BigInt(now()+days*86400)};}
+async function sendConsent(key,fn,okMsg){
+ if(demo){toast("示範模式不送交易","info");return;}if(!signer){toast("請先連接錢包","bad");return;}if(!consentAddr){toast("請先到「設定」填入 RecordConsent 合約地址","bad");return;}
+ busy[key]=true;render();try{const c=new ethers.Contract(consentAddr,CONSENT_ABI,signer);const tx=await fn(c);toast("已送出，等待上鏈…","info",tx.hash);await tx.wait();toast(okMsg,"ok",tx.hash);}catch(e){console.error(e);toast(errMsg(e),"bad");}
+ busy[key]=false;await load();}
+const val=id=>($("#"+id)||{value:""}).value.trim();
+const addrOk=a=>/^0x[0-9a-fA-F]{40}$/.test(a);
+async function act(key,id){
+ const k=key.split(":")[0];
+ if(viaSafe(k,id))return;
+ if(k==="propose"){const a=val("pyAddr"),l=val("pyLabel"),cap=Math.floor(+val("pyCap")||0);if(!addrOk(a))return toast("收款方地址格式不對","bad");if(!l)return toast("請填收款方名稱","bad");
+  return send(key,c=>c.proposePayee(a,cap,l),"已提名 "+l+"，等受益人同意");}
+ if(k==="approvePayee")return send(key,c=>c.approvePayee(id),"已核可收款方");
+ if(k==="removePayee")return send(key,c=>c.removePayee(id),"已移除收款方");
+ if(k==="claimPay"){const a=val("cpPayee"),amt=Math.floor(+val("cpAmt")||0),memo=val("cpMemo");if(!addrOk(a))return toast("請選擇收款方","bad");if(!(amt>0))return toast("請輸入付款金額","bad");
+  return send(key,c=>c.claimAndPay(a,BigInt(amt)*S.unit,memo),"已領取並付款 "+amt+" "+S.symbol);}
+ if(k==="walletPay"){const a=val("wpPayee"),amt=Math.floor(+val("wpAmt")||0),memo=val("wpMemo");if(!addrOk(a))return toast("請選擇收款方","bad");if(!(amt>0))return toast("請輸入付款金額","bad");
+  return send(key,async c=>{await ensureAllowance(BigInt(amt)*S.unit);return c.payFromWallet(a,BigInt(amt)*S.unit,memo);},"已付款 "+amt+" "+S.symbol);}
+ if(k==="placeBid"){const apr=Math.round((+val("bdApr")||0)*100),bud=Math.floor(+val("bdBudget")||0),mp=Math.floor(+val("bdMax")||0);
+  if(!(apr>0))return toast("請輸入收購年化","bad");if(apr>S.maxApr)return toast("年化不能超過合約上限 "+pct(S.maxApr),"bad");if(!(bud>0&&mp>0))return toast("請輸入預算與期數","bad");
+  if(!demo&&(same(me,S.beneficiary)||same(me,S.settlor)))return toast("受益人與出資人不能掛收購報價","bad");
+  return send(key,async c=>{await ensureAllowance(BigInt(bud)*S.unit);return c.placeBid(apr,bud,mp);},"已掛出收購報價");}
+ if(k==="cancelBid")return send(key,c=>c.cancelBid(+id),"已取消報價，剩餘資金已退回");
+ if(k==="sellBid"){const b=+val("sbBid"),f=+val("sbFrom"),t=+val("sbTo");return send(key,c=>c.sellToBid(b,f,t),"已賣給報價 #"+b);}
+ if(k==="resale"){const f=+val("rsFrom"),t=+val("rsTo"),pr=Math.floor(+val("rsPrice")||0);if(!(pr>0))return toast("請輸入售價","bad");return send(key,c=>c.listPeriods(f,t,pr),"已掛出轉售");}
+ if(k==="transfer"){const a=val("trTo"),f=+val("trFrom"),t=+val("trTo2");if(!addrOk(a))return toast("對象地址格式不對","bad");return send(key,c=>c.transferPeriods(a,f,t),"已轉讓第 "+f+"–"+t+" 期");}
+ if(k==="freeze")return send(key,c=>c.freezeUpgrades(),"已永久凍結升級");
+ if(k==="grant"){const g=consentArgs();if(!g)return;return sendConsent(key,c=>c.grant(S.settlor,g.scopes,g.expiry),"已開啟資料分享");}
+ if(k==="revoke")return sendConsent(key,c=>c.revoke(S.settlor),"已撤回資料分享");
+ if(k==="fund"){const v=Math.floor(+$("#fundAmt").value);if(!(v>0))return toast("請輸入金額","bad");return send(key,async c=>{await ensureAllowance(BigInt(v)*S.unit);return c.fund(BigInt(v));},"已存入 "+v+" "+S.symbol);}
+ if(k==="claim"||k==="claimBuyer")return send(key,c=>c.claim(),"領取成功");
+ if(k==="pause"){const n=+$("#pauseN").value;return send(key,c=>c.pause(n),"已暫停 "+n+" 期");}
+ if(k==="unpause")return send(key,c=>c.unpause(),"已恢復撥款");
+ if(k==="list"){const f=+$("#lsFrom").value,t=+$("#lsTo").value,p=Math.floor(+$("#lsPrice").value);if(!(p>0))return toast("請輸入售價","bad");return send(key,c=>c.listPeriods(f,t,p),"掛單成功：第 "+f+"–"+t+" 期");}
+ if(k==="cancel")return send(key,c=>c.cancelListing(+id),"已取消掛單 #"+id);
+ if(k==="buy"){const l=S.listings[+id];
+  if(!demo){if(!me)return toast("請先連接承購人的錢包","bad");
+   if(same(me,S.beneficiary)||(S.benSafe&&isOwnerSafe(S.benSafe,me)))return toast("你現在連的是受益人錢包：受益人不能承購自己的掛單，請在 MetaMask 切換到承購人帳戶","bad");
+   if(same(me,l.seller))return toast("這是你自己的掛單，不能自己買","bad");
+   if(same(me,S.settlor))return toast("你現在連的是出資人錢包：出資人不能承購（避免利益衝突），請在 MetaMask 切換到承購人帳戶","bad");}
+  const Dn=derive();if(l.fromId<Dn.due)return toast("這張掛單的第一期已經到期，合約不允許承購（PeriodAlreadyDue）","bad");
+  if(Dn.paused)return toast("出資人暫停中，暫時不能承購","bad");if(!Dn.fullyFunded)return toast("信託尚未存足，暫時不能承購（NotFullyFunded）","bad");
+  if(!demo&&S.myBal!=null&&S.myBal<l.price)return toast("你的 "+S.symbol+" 餘額不足："+tok(S.myBal,0)+" < 售價 "+tok(l.price,0),"bad");
+  return send(key,async c=>{await ensureAllowance(l.price);return c.buy(+id);},"承購成功：第 "+l.fromId+"–"+l.toId+" 期");}
+}
+
+/* ---------- tick ---------- */
+let lastDue=-1,rzT=null,lastW=innerWidth;
+addEventListener("resize",()=>{clearTimeout(rzT);rzT=setTimeout(()=>{if(Math.abs(innerWidth-lastW)>40&&S){lastW=innerWidth;render();}},200);});
+setInterval(()=>{if(!S)return;document.querySelectorAll("[data-cd]").forEach(el=>el.textContent=dur(+el.dataset.cd-now()));const d=derive().due;if(lastDue>=0&&d!==lastDue)render();lastDue=d;},1000);
+setInterval(()=>{if(!demo&&trustAddr&&!Object.values(busy).some(Boolean)&&document.visibilityState==="visible"&&!document.activeElement.matches("input"))load();},20000);
+
+/* ---------- init ---------- */
+function setTrust(a){a=(a||"").trim();if(!/^0x[0-9a-fA-F]{40}$/.test(a)){toast("地址格式不對：0x 開頭加 40 個英數字","bad");return false;}
+ trustAddr=ethers.getAddress(a);demo=false;lsSet("ft_trust",trustAddr);const u=new URL(location.href);u.searchParams.set("trust",trustAddr);u.searchParams.delete("demo");u.hash="overview";history.replaceState(null,"",u);return true;}
+function startDemo(){demo=true;const u=new URL(location.href);u.searchParams.set("demo","1");u.searchParams.delete("trust");history.replaceState(null,"",u);if(page==="settings")page="overview";load();}
+$("#connectBtn").onclick=connect;$("#refreshBtn").onclick=()=>load();
+$("#trustSel").onclick=()=>nav("settings");$("#menuBtn").onclick=e=>{e.stopPropagation();$("#app").classList.toggle("open");};
+document.addEventListener("click",e=>{if($("#app").classList.contains("open")&&!e.target.closest(".side"))$("#app").classList.remove("open");});
+rprov=new ethers.JsonRpcProvider(RPC,11155111,{staticNetwork:true});
+const q=new URLSearchParams(location.search),h=location.hash.slice(1);
+if(PAGES.some(p=>p.id===h))page=h;
+{const ca=q.get("consent")||lsGet("ft_consent");if(ca&&/^0x[0-9a-fA-F]{40}$/.test(ca))consentAddr=ethers.getAddress(ca);}
+if(q.get("demo"))demo=true;
+else{const a=q.get("trust")||lsGet("ft_trust");if(a&&/^0x[0-9a-fA-F]{40}$/.test(a))trustAddr=ethers.getAddress(a);}
+load();
+})();
+</script>
+</body>
+</html>
