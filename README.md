@@ -20,11 +20,34 @@
 
 | 路徑 | 說明 |
 |---|---|
-| `contracts/FamilyTrustV2.sol` | 可升級信託合約 |
+| `contracts/FamilyTrustV2.sol` | 組裝模組與升級權限，**部署只部署這份** |
+| `contracts/interfaces/IFamilyTrustV2.sol` | 規格書：資料結構、錯誤、事件 |
+| `contracts/storage/TrustStorage.sol` | 全部狀態變數（升級時只能往後加） |
+| `contracts/modules/TrustSchedule.sol` | 撥款排程：存入、每期歸屬、領取、擔保率 |
+| `contracts/modules/SettlorControls.sol` | 出資人有上限的暫停 |
+| `contracts/modules/ListingMarket.sol` | 承購市場：掛單、承購、轉讓、報價 |
+| `contracts/modules/BidBook.sol` | 做市商收購報價：掛報價、賣給報價、取消 |
+| `contracts/modules/Payments.sol` | 支付：收款方提名與核可、領取並直付、錢包付款 |
+| `contracts/libraries/PeriodPricing.sol` | 時間價值純數學：現值與隱含年化 |
 | `contracts/RecordConsent.sol` | 受益人授權查詢（獨立部署，不需參數） |
 | `index.html` | 前端控制台（單一檔案，ethers.js 6） |
 | `DEPLOY.md` | 在 Remix 匯入與部署的步驟 |
 | `DESIGN.md` | 介面設計規範 |
+
+## 繼承關係
+
+```
+IFamilyTrustV2（規格）
+   └─ TrustStorage（全部狀態）
+        └─ TrustSchedule（核心）
+             ├─ SettlorControls
+             ├─ ListingMarket ── 使用 PeriodPricing
+             │    └─ BidBook
+             └─ Payments
+FamilyTrustV2 = Initializable + UUPSUpgradeable + SettlorControls + BidBook + Payments
+```
+
+模組之間用「掛勾」溝通：`TrustSchedule` 宣告 `_isPaused()`，由 `SettlorControls` 實作。
 
 ## 開啟 GitHub Pages
 
