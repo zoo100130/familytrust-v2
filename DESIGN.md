@@ -1,7 +1,7 @@
 # DESIGN.md — FamilyTrust 信託前端
 
 風格參考：Better Stack（observability 儀表板）。冷調近黑底、柔和靛藍主色、資料密集但留白克制。
-本檔給 AI coding agent 與協作者讀：改 UI 前先讀這份，不要另創顏色或字級。
+本檔給協作者讀：改 UI 前先讀這份，不要另創顏色或字級。
 
 ---
 
