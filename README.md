@@ -49,8 +49,6 @@ FamilyTrustV2 = Initializable + UUPSUpgradeable + SettlorControls + BidBook + Pa
 
 模組之間用「掛勾」溝通：`TrustSchedule` 宣告 `_isPaused()`，由 `SettlorControls` 實作。
 
-## 開啟 GitHub Pages
 
-Settings → Pages → Build and deployment：Source 選 **Deploy from a branch**，Branch 選 **main / (root)** → Save。
 
 舊版（不可升級合約）在 https://github.com/zoo100130/dapp_family-trust_test
